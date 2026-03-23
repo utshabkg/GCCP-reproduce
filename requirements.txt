@@ -1,0 +1,35 @@
+# Core ML/NLP
+torch>=2.0.0
+transformers>=4.35.0
+accelerate>=0.25.0
+sentence-transformers>=2.2.0
+
+# IR Tools
+pyserini>=0.22.0
+pytrec_eval
+ir_datasets
+beir
+faiss-cpu
+
+# Text Processing
+spacy>=3.5.0
+nltk>=3.8.0
+
+# Scientific Computing
+numpy>=1.24.0
+scipy>=1.10.0
+scikit-learn>=1.2.0
+pandas>=2.0.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Utilities
+tqdm>=4.65.0
+pyflagr
+
+# Dev
+jupyter
+black
+flake8

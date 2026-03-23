@@ -1,0 +1,32 @@
+name: gccp-reproduce
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.10
+  - pytorch>=2.0
+  - pytorch-cuda=12.1
+  - numpy
+  - scipy
+  - scikit-learn
+  - pandas
+  - matplotlib
+  - seaborn
+  - tqdm
+  - jupyter
+  - openjdk=21
+  - pip
+  - pip:
+    - transformers>=4.35.0
+    - accelerate>=0.25.0
+    - pyserini>=0.22.0
+    - pytrec_eval
+    - sentence-transformers
+    - spacy
+    - nltk
+    - faiss-cpu
+    - beir
+    - pyflagr
+    - ir_datasets
+    - datasets
