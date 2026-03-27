@@ -68,7 +68,7 @@ class SpectralMDS:
     of the GCCP paper.
     """
     
-    def __init__(self, threshold: float = 0.1, use_spacy: bool = True):
+    def __init__(self, threshold: float = 0.2, use_spacy: bool = True):
         """
         Initialize the MDS module.
         
@@ -276,7 +276,7 @@ class SpectralMDS:
 def generate_anchor_document(documents: List[str], 
                             m: int = 10, 
                             z: int = 10,
-                            threshold: float = 0.1,
+                            threshold: float = 0.2,
                             use_spacy: bool = True) -> str:
     """
     Convenience function to generate anchor document.
@@ -293,6 +293,9 @@ def generate_anchor_document(documents: List[str],
     """
     # Use top-m documents
     top_docs = documents[:m]
+    
+    if not top_docs:
+        return ""
     
     # Extract document contents
     if isinstance(top_docs[0], dict):
