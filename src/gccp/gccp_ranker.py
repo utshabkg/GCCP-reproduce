@@ -2,27 +2,26 @@
 GCCP: Global-Consistent Comparative Pointwise Ranking
 
 Implements contrastive relevance scoring using anchor documents (Eq. 10).
+Based on author's implementation: https://github.com/ChainsawM/GCCP
 """
 import torch
 import torch.nn.functional as F
 from typing import Dict, List, Tuple, Optional
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
+from transformers import T5Tokenizer, T5ForConditionalGeneration, AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 import numpy as np
 
 from .spectral_mds import generate_anchor_document
 
 
-# Pairwise comparison prompt (from original paper)
-GCCP_PROMPT = """Given a query, which of the following two passages is more relevant to the query?
+# Author's compare_prompt_templates[0] - exact match
+GCCP_PROMPT = '''Given a query "{query}", which of the following two passages is more relevant to the query?
 
-Query: {query}
+Passage A: "{passage_a}"
 
-Passage A: {passage_a}
+Passage B: "{passage_b}"
 
-Passage B: {passage_b}
-
-The more relevant passage is Passage"""
+Output Passage A or Passage B:'''
 
 
 class GCCPRanker:
@@ -34,107 +33,129 @@ class GCCPRanker:
     """
     
     def __init__(self, model_name: str, device: str = None,
-                 max_length: int = 1024, m: int = 10, z: int = 10,
-                 threshold: float = 0.1, use_spacy: bool = True):
+                 max_doc_length: int = 128, m: int = 10, z: int = 10,
+                 threshold: float = 0.2, use_spacy: bool = False,
+                 sentencizer: str = 'nltk'):
         """
         Initialize GCCP ranker.
         
         Args:
             model_name: HuggingFace model name
             device: Device to use
-            max_length: Maximum input length
-            m: Number of top docs for anchor generation
-            z: Number of sentences in anchor
-            threshold: Similarity threshold for MDS
+            max_doc_length: Maximum doc length in tokens (128 per author)
+            m: Number of top docs for anchor generation (10 per author)
+            z: Number of sentences in anchor (10 per author)
+            threshold: Similarity threshold for MDS (0.2 per author)
             use_spacy: Use spaCy for sentence segmentation
+            sentencizer: 'spacy' or 'nltk' (author uses both, nltk default)
         """
         self.model_name = model_name
-        self.max_length = max_length
+        self.max_doc_length = max_doc_length
         self.m = m
         self.z = z
         self.threshold = threshold
-        self.use_spacy = use_spacy
+        self.use_spacy = use_spacy or (sentencizer == 'spacy')
+        self.sentencizer = sentencizer
         
         if device is None:
             self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         else:
             self.device = device
         
-        # Load model
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        
+        # Load model - following author's model_handler.py
         if 't5' in model_name.lower() or 'ul2' in model_name.lower():
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(
-                model_name, torch_dtype=torch.float16, device_map='auto'
+            self.tokenizer = T5Tokenizer.from_pretrained(model_name)
+            self.model = T5ForConditionalGeneration.from_pretrained(
+                model_name, 
+                device_map='auto',
+                torch_dtype=torch.float16 if self.device == 'cuda' else torch.float32
             )
             self.is_encoder_decoder = True
         else:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name, torch_dtype=torch.float16, device_map='auto'
             )
             self.is_encoder_decoder = False
         
         self.model.eval()
+    
+    def truncate(self, text: str, length: int = None) -> str:
+        """Truncate text to specified token length."""
+        if length is None:
+            length = self.max_doc_length
+        tokens = self.tokenizer.tokenize(text)[:length]
+        return self.tokenizer.convert_tokens_to_string(tokens)
+    
+    def likelihood(self, input_text: str, target_tokens: List[str],
+                   decoder_input_text: str = '<pad> Passage ') -> List[float]:
+        """
+        Get softmax probabilities for target tokens.
         
-        # Token IDs for "A" and "B"
-        self.token_a = self.tokenizer.encode("A", add_special_tokens=False)[0]
-        self.token_b = self.tokenizer.encode("B", add_special_tokens=False)[0]
+        Note: For GCCP, author uses decoder_input_text='<pad> Passage '
+        to prime the decoder to output "Passage A" or "Passage B"
+        """
+        input_ids = self.tokenizer(
+            input_text, return_tensors='pt', truncation=True
+        ).input_ids.to(self.device)
+        
+        decoder_input_ids = self.tokenizer.encode(
+            decoder_input_text, return_tensors='pt', add_special_tokens=False
+        ).to(self.device)
+        
+        with torch.no_grad():
+            if self.is_encoder_decoder:
+                output = self.model(input_ids=input_ids, decoder_input_ids=decoder_input_ids)
+                logits = output.logits[0][-1]
+            else:
+                output = self.model(input_ids=input_ids)
+                logits = output.logits[0][-1]
+        
+        # Softmax probabilities (not log!)
+        distributions = torch.softmax(logits, dim=0)
+        
+        scores = []
+        for tt in target_tokens:
+            token_id = self.tokenizer.encode(tt, add_special_tokens=False)[0]
+            scores.append(distributions[token_id].cpu().item())
+        
+        return scores
     
     def _get_comparison_score(self, query: str, passage: str, anchor: str) -> float:
         """
         Compute contrastive relevance score (Eq. 10).
         
-        f_c(q, d_i, d_a) = LLM(d_i | q, d_i, d_a, P_GCCP)
-        
-        Returns probability that passage is more relevant than anchor.
+        Following author's implementation:
+        - Document is Passage A, Anchor is Passage B
+        - Return P(A) as relevance score (way_score='single')
         """
-        # Format prompt with passage as A and anchor as B
+        # Truncate
+        query_trunc = self.truncate(query)
+        passage_trunc = self.truncate(passage)
+        anchor_trunc = self.truncate(anchor)
+        
+        # Format prompt - doc first, anchor second (author's convention)
         prompt = GCCP_PROMPT.format(
-            query=query,
-            passage_a=passage[:2000],  # Truncate long passages
-            passage_b=anchor[:2000]
+            query=query_trunc,
+            passage_a=passage_trunc,
+            passage_b=anchor_trunc
         )
         
-        inputs = self.tokenizer(
-            prompt, return_tensors='pt',
-            max_length=self.max_length, truncation=True
-        ).to(self.device)
+        # Get P(A) and P(B) with decoder primed with '<pad> Passage '
+        scores = self.likelihood(prompt, ['A', 'B'], decoder_input_text='<pad> Passage ')
         
-        with torch.no_grad():
-            if self.is_encoder_decoder:
-                decoder_input = self.tokenizer(
-                    "", return_tensors='pt'
-                ).input_ids.to(self.device)
-                
-                outputs = self.model(
-                    **inputs,
-                    decoder_input_ids=decoder_input
-                )
-                logits = outputs.logits[0, -1, :]
-            else:
-                outputs = self.model(**inputs)
-                logits = outputs.logits[0, -1, :]
-        
-        # Get log probabilities for A and B
-        log_probs = F.log_softmax(logits, dim=-1)
-        
-        score_a = log_probs[self.token_a].item()
-        score_b = log_probs[self.token_b].item()
-        
-        # Return probability of choosing passage (A) over anchor (B)
-        prob_a = np.exp(score_a) / (np.exp(score_a) + np.exp(score_b))
-        
-        return prob_a
+        # Return P(A) - probability passage is more relevant than anchor
+        return scores[0]
     
     def generate_anchor(self, documents: List[Dict]) -> str:
         """
-        Generate anchor document from top-m candidates.
+        Generate anchor document from top-m candidates using spectral MDS.
         
         Args:
             documents: List of documents (sorted by initial ranking)
             
         Returns:
-            Anchor document text
+            Anchor document text (z sentences concatenated)
         """
         doc_texts = [d.get('contents', d.get('text', '')) for d in documents[:self.m]]
         
