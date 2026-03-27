@@ -372,9 +372,57 @@ The gap was caused by using `rank_bm25` Python library instead of pyserini with 
 - May require deeper analysis of spectral MDS parameters
 
 **Next Steps:**
-1. Run Flan-T5-XL experiments
+1. ~~Run Flan-T5-XL experiments~~ ✅ DL19 Complete
 2. Run BEIR evaluation
 3. Investigate DL20 gap (lower priority)
+
+---
+
+### [Date: 2026-03-27] - Flan-T5-XL Experiments ✅
+
+**DL19 Results with Flan-T5-XL (43 queries, ~20 min):**
+
+| Method | Our NDCG@10 | Paper NDCG@10 | Gap |
+|--------|-------------|---------------|-----|
+| BM25   | 0.5058      | 0.5058        | 0%  |
+| RG-YN  | **0.6737**  | 0.6910        | **~2.5%** ✅ |
+| GCCP   | **0.6844**  | 0.7065        | ~3.1% |
+| PAGC   | **0.7030**  | 0.7281        | ~3.4% |
+
+**Key Observations:**
+- T5-XL shows improved performance over T5-Large (as expected)
+- RG-YN: 0.6624 → 0.6737 (+1.7%)
+- GCCP: 0.6166 → 0.6844 (+11% improvement!)
+- PAGC: 0.6834 → 0.7030 (+2.9%)
+- The GCCP method benefits most from larger model
+
+**Model Scaling Analysis (DL19):**
+
+| Model | RG-YN | GCCP | PAGC |
+|-------|-------|------|------|
+| Flan-T5-Large (780M) | 0.6624 | 0.6166 | 0.6834 |
+| Flan-T5-XL (3B) | 0.6737 (+1.7%) | 0.6844 (+11%) | 0.7030 (+2.9%) |
+
+---
+
+**DL20 Results with Flan-T5-XL (54 queries, ~5 min):**
+
+| Method | Our NDCG@10 | Paper NDCG@10 | Gap |
+|--------|-------------|---------------|-----|
+| BM25   | 0.4796      | 0.4796        | 0%  |
+| RG-YN  | **0.6512**  | 0.6665        | **~2.3%** ✅ |
+| GCCP   | **0.6668**  | 0.6865        | ~2.9% |
+| PAGC   | **0.6760**  | 0.7092        | ~4.7% |
+
+**Summary: T5-XL Significantly Improves DL20!**
+
+| Dataset | Method | T5-Large | T5-XL | Improvement |
+|---------|--------|----------|-------|-------------|
+| DL20 | RG-YN | 0.6133 | 0.6512 | **+6.2%** |
+| DL20 | GCCP | 0.6205 | 0.6668 | **+7.5%** |
+| DL20 | PAGC | 0.6515 | 0.6760 | **+3.8%** |
+
+**Key Insight:** T5-XL dramatically reduces the DL20 gap from ~5-6% to ~2-5%, confirming model size is crucial for DL20 performance
 
 ---
 
