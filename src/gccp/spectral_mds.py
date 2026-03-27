@@ -9,8 +9,6 @@ Implements the unsupervised extractive MDS approach:
 5. Anchor document generation from larger cluster
 """
 import numpy as np
-from scipy import sparse
-from scipy.sparse.linalg import eigsh
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from typing import List, Tuple, Optional
@@ -161,6 +159,9 @@ class SpectralMDS:
         The Fiedler vector is the eigenvector corresponding to the
         second smallest eigenvalue of the normalized Laplacian L.
         
+        Uses np.linalg.eigh (dense solver) like the author's implementation
+        for numerical stability and guaranteed convergence.
+        
         Args:
             affinity: Affinity matrix A
             
@@ -176,8 +177,8 @@ class SpectralMDS:
         # Compute degree matrix D (Eq. 6)
         degrees = affinity.sum(axis=1)
         
-        # Handle zero degrees
-        degrees = np.maximum(degrees, 1e-10)
+        # Handle zero degrees (same as author: 1e-12)
+        degrees = np.maximum(degrees, 1e-12)
         
         # D^{-1/2}
         d_inv_sqrt = np.diag(1.0 / np.sqrt(degrees))
@@ -186,31 +187,12 @@ class SpectralMDS:
         normalized_affinity = d_inv_sqrt @ affinity @ d_inv_sqrt
         laplacian = np.eye(n) - normalized_affinity
         
-        # Make symmetric (numerical stability)
-        laplacian = (laplacian + laplacian.T) / 2
+        # Use dense eigenvalue solver (np.linalg.eigh) like the author
+        # This is numerically stable and always converges
+        eigenvalues, eigenvectors = np.linalg.eigh(laplacian)
         
-        try:
-            # Get second smallest eigenvector (Eq. 7)
-            # We want eigenvectors for smallest eigenvalues
-            eigenvalues, eigenvectors = eigsh(
-                sparse.csr_matrix(laplacian), 
-                k=min(3, n-1), 
-                which='SM',  # Smallest magnitude
-                tol=1e-6
-            )
-            
-            # Sort by eigenvalue
-            idx = np.argsort(eigenvalues)
-            
-            # Fiedler vector is the second eigenvector (first is constant)
-            if len(idx) >= 2:
-                fiedler = eigenvectors[:, idx[1]]
-            else:
-                fiedler = eigenvectors[:, idx[0]]
-                
-        except Exception as e:
-            print(f"Warning: Eigenvalue computation failed ({e}), using random partition")
-            fiedler = np.random.randn(n)
+        # Fiedler vector is the second eigenvector (eigenvalues already sorted)
+        fiedler = eigenvectors[:, 1]
         
         return fiedler
     
@@ -251,7 +233,6 @@ class SpectralMDS:
             selected_indices = negative_cluster
         
         # Step 5: Order by original position (Eq. 9)
-        # Create (sentence_idx, doc_idx, position_in_doc) tuples
         selected_with_positions = []
         doc_sentence_counts = {}
         
