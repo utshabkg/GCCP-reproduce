@@ -5,24 +5,25 @@ Implements the baseline pointwise scoring approaches:
 - RG-YN: Relevance Generation with Yes/No
 - RG-S(0,k): Relevance Generation with Scale 0-k
 - QG: Query Generation likelihood
+
+Based on author's implementation: https://github.com/ChainsawM/GCCP
 """
 import torch
 import torch.nn.functional as F
 from typing import Dict, List, Tuple, Optional
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM, T5Tokenizer, T5ForConditionalGeneration
 from tqdm import tqdm
 import numpy as np
 
 
-# Prompt templates following the original paper
+# Prompt templates following the original paper (template_idx=0)
+# NOTE: Using lowercase 'yes'/'no' as per author's implementation
 PROMPT_TEMPLATES = {
-    'rg_yn': """Passage: {passage}
-Query: {query}
-Does the passage answer the query? Answer 'Yes' or 'No'.""",
-
-    'rg_s': """Passage: {passage}
-Query: {query}
-How relevant is this passage to the query? Rate from 0 (not relevant) to {max_score} (highly relevant).""",
+    'rg_yn': "Passage: {passage}\nQuery: {query}\nIs the passage relevant to the query? Answer '{token_yes}' or '{token_no}'",
+    
+    'rg_yn_alt': "Query: {query}\nPassage: {passage}\nIs the passage relevant to the query? Answer '{token_yes}' or '{token_no}'",
+    
+    'rg_s': "From a scale of 0 to {k}, judge the relevance between the query and the passage.\nQuery: {query}\nPassage: {passage}\nOutput:",
 
     'qg': """Passage: {passage}
 Please write a question based on this passage.""",
@@ -33,18 +34,18 @@ class PointwiseRanker:
     """Base class for pointwise ranking methods."""
     
     def __init__(self, model_name: str, device: str = None, 
-                 max_length: int = 512, batch_size: int = 8):
+                 max_doc_length: int = 128, batch_size: int = 8):
         """
         Initialize the pointwise ranker.
         
         Args:
             model_name: HuggingFace model name (e.g., 'google/flan-t5-xl')
             device: Device to use (cuda/cpu)
-            max_length: Maximum input length
+            max_doc_length: Maximum document length in tokens (default 128 per paper)
             batch_size: Batch size for inference
         """
         self.model_name = model_name
-        self.max_length = max_length
+        self.max_doc_length = max_doc_length
         self.batch_size = batch_size
         
         if device is None:
@@ -52,16 +53,17 @@ class PointwiseRanker:
         else:
             self.device = device
         
-        # Load model and tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        
-        # Check if encoder-decoder or decoder-only
+        # Load model and tokenizer - following author's implementation
         if 't5' in model_name.lower() or 'ul2' in model_name.lower():
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(
-                model_name, torch_dtype=torch.float16, device_map='auto'
+            self.tokenizer = T5Tokenizer.from_pretrained(model_name)
+            self.model = T5ForConditionalGeneration.from_pretrained(
+                model_name, 
+                device_map='auto',
+                torch_dtype=torch.float16 if self.device == 'cuda' else torch.float32
             )
             self.is_encoder_decoder = True
         else:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name, torch_dtype=torch.float16, device_map='auto'
             )
@@ -69,65 +71,91 @@ class PointwiseRanker:
         
         self.model.eval()
     
-    def _get_token_logits(self, input_text: str, target_tokens: List[str]) -> Dict[str, float]:
-        """Get log probabilities for specific target tokens."""
-        inputs = self.tokenizer(
-            input_text, return_tensors='pt', 
-            max_length=self.max_length, truncation=True
+    def truncate(self, text: str, length: int = None) -> str:
+        """Truncate text to specified token length (following author's implementation)."""
+        if length is None:
+            length = self.max_doc_length
+        tokens = self.tokenizer.tokenize(text)[:length]
+        return self.tokenizer.convert_tokens_to_string(tokens)
+    
+    def likelihood(self, input_text: str, target_tokens: List[str], 
+                   decoder_input_text: str = '<pad> ') -> List[float]:
+        """
+        Get softmax probabilities for target tokens (following author's implementation).
+        
+        This matches author's ModelHandler.likelihood() method exactly.
+        """
+        input_ids = self.tokenizer(
+            input_text, return_tensors='pt', truncation=True
+        ).input_ids.to(self.device)
+        
+        # For T5: use decoder_input_ids with specified prefix
+        decoder_input_ids = self.tokenizer.encode(
+            decoder_input_text, return_tensors='pt', add_special_tokens=False
         ).to(self.device)
         
         with torch.no_grad():
             if self.is_encoder_decoder:
-                # For encoder-decoder models, we need decoder input
-                decoder_input = self.tokenizer(
-                    "", return_tensors='pt'
-                ).input_ids.to(self.device)
-                
-                outputs = self.model(
-                    **inputs, 
-                    decoder_input_ids=decoder_input
-                )
-                logits = outputs.logits[0, -1, :]  # Last position logits
+                output = self.model(input_ids=input_ids, decoder_input_ids=decoder_input_ids)
+                logits = output.logits[0][-1]  # Last position logits
             else:
-                outputs = self.model(**inputs)
-                logits = outputs.logits[0, -1, :]
+                output = self.model(input_ids=input_ids)
+                logits = output.logits[0][-1]
         
-        # Get log probabilities for target tokens
-        log_probs = F.log_softmax(logits, dim=-1)
+        # Apply softmax to get probabilities (NOT log_softmax!)
+        distributions = torch.softmax(logits, dim=0)
         
-        results = {}
-        for token in target_tokens:
-            token_id = self.tokenizer.encode(token, add_special_tokens=False)[0]
-            results[token] = log_probs[token_id].item()
+        # Get probabilities for target tokens
+        scores = []
+        for tt in target_tokens:
+            token_id = self.tokenizer.encode(tt, add_special_tokens=False)[0]
+            scores.append(distributions[token_id].cpu().item())
         
-        return results
+        return scores
 
 
 class RGYNRanker(PointwiseRanker):
     """Relevance Generation with Yes/No scoring (Eq. 3 in paper)."""
     
-    def __init__(self, model_name: str, **kwargs):
+    def __init__(self, model_name: str, template_idx: int = 0, 
+                 target_tokens: Tuple[str, str] = ('yes', 'no'), **kwargs):
         super().__init__(model_name, **kwargs)
-        self.template = PROMPT_TEMPLATES['rg_yn']
+        self.template_idx = template_idx
+        self.target_tokens = target_tokens
+        
+        # Template selection matching author's clf_ranking.py
+        if template_idx == 0:
+            self.template = PROMPT_TEMPLATES['rg_yn']
+        elif template_idx == 1:
+            self.template = PROMPT_TEMPLATES['rg_yn_alt']
+        else:
+            self.template = PROMPT_TEMPLATES['rg_yn']
     
     def score(self, query: str, passage: str) -> float:
         """
         Score a single query-passage pair.
         
-        f_RG-YN(q, d) = exp(S_Y) / (exp(S_Y) + exp(S_N))
-        
-        Returns probability of 'Yes' (relevance score)
+        Following author's implementation:
+        - Truncate query and passage to max_doc_length tokens
+        - Use 'yes'/'no' tokens (lowercase)
+        - Return P(yes) as the relevance score
         """
-        prompt = self.template.format(query=query, passage=passage)
-        log_probs = self._get_token_logits(prompt, ['Yes', 'No'])
+        # Truncate like author does
+        query_trunc = self.truncate(query)
+        passage_trunc = self.truncate(passage)
         
-        # Convert to probability (Eq. 3)
-        s_yes = log_probs['Yes']
-        s_no = log_probs['No']
+        prompt = self.template.format(
+            query=query_trunc, 
+            passage=passage_trunc,
+            token_yes=self.target_tokens[0],
+            token_no=self.target_tokens[1]
+        )
         
-        # Softmax between Yes and No
-        score = np.exp(s_yes) / (np.exp(s_yes) + np.exp(s_no))
-        return score
+        # Get softmax probabilities (not log probs!)
+        scores = self.likelihood(prompt, list(self.target_tokens))
+        
+        # Return P(yes) as relevance score
+        return scores[0]
     
     def rank(self, query: str, documents: List[Dict]) -> List[Tuple[str, float]]:
         """
