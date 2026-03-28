@@ -1,0 +1,28 @@
+{
+  "experiment": {
+    "dataset": "signal1m",
+    "model": "flan-t5-large",
+    "num_queries": 97,
+    "elapsed": "0:10:18.052919",
+    "timestamp": "2026-03-27T20:10:34.768998"
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.32217437967508045
+    },
+    "rg_yn": {
+      "ndcg@10": 0.28584556247702897
+    },
+    "gccp": {
+      "ndcg@10": 0.298979529813125
+    },
+    "pagc": {
+      "ndcg@10": 0.2982511733662401
+    }
+  },
+  "paper_comparison": {
+    "RG-YN": 0.2823,
+    "GCCP": 0.2955,
+    "PAGC": 0.3027
+  }
+}

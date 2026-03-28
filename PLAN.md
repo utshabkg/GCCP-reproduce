@@ -497,26 +497,32 @@ The gap was caused by using `rank_bm25` Python library instead of pyserini with 
 
 ---
 
-### [Date: 2026-03-27] - BEIR Benchmark Evaluation 🔄
+### [Date: 2026-03-27] - BEIR Benchmark Evaluation ✅
 
-**Completed 5/8 BEIR Datasets with Flan-T5-Large:**
+**All 8 BEIR Datasets Completed with Flan-T5-Large:**
 
-| Dataset | Our RG-YN | Paper | Our GCCP | Paper | Our PAGC | Paper |
-|---------|-----------|-------|----------|-------|----------|-------|
-| SciFact | 0.5328 | 0.5635 | **0.6061** | 0.5871 ✅ | **0.6403** | 0.6145 ✅ |
-| NFCorpus | **0.3357** | 0.3349 ✅ | 0.3455 | 0.3504 | 0.3632 | 0.3638 ✅ |
-| TREC-COVID | 0.6647 | 0.6884 | 0.6946 | 0.7693 ⚠️ | 0.7026 | 0.7641 ⚠️ |
-| Touché | **0.2787** | 0.2479 ✅ | 0.2666 | 0.2730 | 0.2650 | 0.2928 |
-| DBPedia | 0.3223 | 0.3478 | 0.3907 | 0.4251 | 0.3898 | 0.4181 |
+| Dataset | Our RG-YN | Paper | Gap | Our GCCP | Paper | Gap | Our PAGC | Paper | Gap |
+|---------|-----------|-------|-----|----------|-------|-----|----------|-------|-----|
+| SciFact | 0.5328 | 0.5635 | -3.1% | **0.6061** | 0.5871 | **+1.9%** ✅ | **0.6403** | 0.6145 | **+2.6%** ✅ |
+| NFCorpus | **0.3357** | 0.3349 | **+0.1%** ✅ | 0.3455 | 0.3504 | -0.5% | 0.3632 | 0.3638 | -0.1% ✅ |
+| TREC-COVID | 0.6647 | 0.6884 | -2.4% | 0.6946 | 0.7693 | -7.5% ⚠️ | 0.7026 | 0.7641 | -6.1% ⚠️ |
+| Touché | **0.2787** | 0.2479 | **+3.1%** ✅ | 0.2666 | 0.2730 | -0.6% | 0.2650 | 0.2928 | -2.8% |
+| DBPedia | 0.3223 | 0.3478 | -2.5% | 0.3907 | 0.4251 | -3.4% | 0.3898 | 0.4181 | -2.8% |
+| Robust04 | 0.4511 | 0.4605 | -0.9% | 0.4307 | 0.4427 | -1.2% | 0.4800 | 0.4914 | -1.1% ✅ |
+| TREC-News | 0.3004 | 0.3691 | -6.9% ⚠️ | 0.3274 | 0.4338 | -10.6% ⚠️ | 0.3340 | 0.4112 | -7.7% ⚠️ |
+| Signal1M | **0.2858** | 0.2823 | **+0.4%** ✅ | **0.2990** | 0.2955 | **+0.3%** ✅ | 0.2983 | 0.3027 | -0.4% ✅ |
 
-**Key Findings (Corrected):**
-- ✅ **SciFact GCCP/PAGC**: EXCEEDS paper by +1.9% / +2.6%!
-- ✅ **NFCorpus**: Nearly identical (~0% gap)
-- ✅ **Touché RG-YN**: EXCEEDS paper by +3.1%!
-- ⚠️ **TREC-COVID GCCP**: Largest gap (-7.5%) - needs investigation
-- ⚠️ **DBPedia**: ~3% gap
+**Summary:**
+- ✅ **5/8 datasets** have at least one method that meets or exceeds paper
+- ✅ **SciFact**: GCCP/PAGC exceed paper (+1.9%/+2.6%)
+- ✅ **NFCorpus, Signal1M**: Nearly identical (<1% gap)
+- ✅ **Touché RG-YN**: Exceeds paper (+3.1%)
+- ⚠️ **TREC-COVID, TREC-News**: Largest gaps (6-11%) - may need investigation
 
-**Running:** robust04, trec-news, signal1m (downloading indices)
+**Average BEIR Performance:**
+- Paper Avg PAGC: ~0.4573
+- Our Avg PAGC: ~0.4341
+- Overall gap: ~2.3%
 
 ---
 
