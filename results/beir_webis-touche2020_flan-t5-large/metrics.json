@@ -1,0 +1,28 @@
+{
+  "experiment": {
+    "dataset": "webis-touche2020",
+    "model": "flan-t5-large",
+    "num_queries": 49,
+    "elapsed": "0:06:14.859001",
+    "timestamp": "2026-03-27T18:09:23.726936"
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.43642997054074995
+    },
+    "rg_yn": {
+      "ndcg@10": 0.2786701547049023
+    },
+    "gccp": {
+      "ndcg@10": 0.26662080208855665
+    },
+    "pagc": {
+      "ndcg@10": 0.26502469247142396
+    }
+  },
+  "paper_comparison": {
+    "RG-YN": 0.3085,
+    "GCCP": 0.2999,
+    "PAGC": 0.3392
+  }
+}

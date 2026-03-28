@@ -497,6 +497,29 @@ The gap was caused by using `rank_bm25` Python library instead of pyserini with 
 
 ---
 
+### [Date: 2026-03-27] - BEIR Benchmark Evaluation 🔄
+
+**Completed 5/8 BEIR Datasets with Flan-T5-Large:**
+
+| Dataset | Our RG-YN | Paper | Our GCCP | Paper | Our PAGC | Paper |
+|---------|-----------|-------|----------|-------|----------|-------|
+| SciFact | 0.5328 | 0.5635 | **0.6061** | 0.5871 ✅ | **0.6403** | 0.6145 ✅ |
+| NFCorpus | **0.3357** | 0.3349 ✅ | 0.3455 | 0.3504 | 0.3632 | 0.3638 ✅ |
+| TREC-COVID | 0.6647 | 0.6884 | 0.6946 | 0.7693 ⚠️ | 0.7026 | 0.7641 ⚠️ |
+| Touché | **0.2787** | 0.2479 ✅ | 0.2666 | 0.2730 | 0.2650 | 0.2928 |
+| DBPedia | 0.3223 | 0.3478 | 0.3907 | 0.4251 | 0.3898 | 0.4181 |
+
+**Key Findings (Corrected):**
+- ✅ **SciFact GCCP/PAGC**: EXCEEDS paper by +1.9% / +2.6%!
+- ✅ **NFCorpus**: Nearly identical (~0% gap)
+- ✅ **Touché RG-YN**: EXCEEDS paper by +3.1%!
+- ⚠️ **TREC-COVID GCCP**: Largest gap (-7.5%) - needs investigation
+- ⚠️ **DBPedia**: ~3% gap
+
+**Running:** robust04, trec-news, signal1m (downloading indices)
+
+---
+
 ### [Date: 2026-03-26] - Author Code Analysis & Discrepancies (A* Paper Insights) 📝
 
 **Cloned author's repository:** `author_code/` from https://github.com/ChainsawM/GCCP

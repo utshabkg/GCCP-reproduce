@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+"""
+BEIR Benchmark Evaluation for GCCP Reproducibility Study
+
+Evaluates on 8 BEIR datasets:
+- trec-covid, robust04, webis-touche2020, scifact
+- signal1m, trec-news, dbpedia-entity, nfcorpus
+
+Usage:
+    python scripts/run_beir.py --dataset scifact --model flan-t5-large
+    python scripts/run_beir.py --dataset all --model flan-t5-xl
+"""
+
+import argparse
+import json
+import os
+import sys
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import torch
+from tqdm import tqdm
+from pyserini.search.lucene import LuceneSearcher
+from pyserini.search import get_topics, get_qrels
+
+from src.pointwise.rankers import RGYNRanker
+from src.gccp.gccp_ranker import GCCPRanker
+
+# BEIR datasets used in the paper
+BEIR_DATASETS = [
+    'scifact',
+    'nfcorpus', 
+    'trec-covid',
+    'webis-touche2020',
+    'dbpedia-entity',
+    # 'robust04',  # Requires special setup
+    # 'signal1m',  # Very large
+    # 'trec-news', # Requires special setup
+]
+
+# Paper's reported results (Table 1 - Flan-T5-Large)
+# Note: PAGC in our code = RG-YN + GCCP from paper
+PAPER_RESULTS = {
+    'trec-covid': {'RG-YN': 0.6884, 'GCCP': 0.7693, 'PAGC': 0.7641},
+    'robust04': {'RG-YN': 0.4605, 'GCCP': 0.4427, 'PAGC': 0.4914},
+    'webis-touche2020': {'RG-YN': 0.2479, 'GCCP': 0.2730, 'PAGC': 0.2928},
+    'scifact': {'RG-YN': 0.5635, 'GCCP': 0.5871, 'PAGC': 0.6145},
+    'signal1m': {'RG-YN': 0.2823, 'GCCP': 0.2955, 'PAGC': 0.3027},
+    'trec-news': {'RG-YN': 0.3691, 'GCCP': 0.4338, 'PAGC': 0.4112},
+    'dbpedia-entity': {'RG-YN': 0.3478, 'GCCP': 0.4251, 'PAGC': 0.4181},
+    'nfcorpus': {'RG-YN': 0.3349, 'GCCP': 0.3504, 'PAGC': 0.3638},
+}
+
+
+def get_beir_data(dataset_name: str, top_k: int = 100):
+    """Load BEIR dataset using pyserini."""
+    print(f"\nLoading BEIR dataset: {dataset_name}")
+    
+    # Index name
+    index_name = f'beir-v1.0.0-{dataset_name}.flat'
+    topics_name = f'beir-v1.0.0-{dataset_name}-test'
+    
+    # Load searcher
+    searcher = LuceneSearcher.from_prebuilt_index(index_name)
+    
+    # Load topics (queries)
+    topics = get_topics(topics_name)
+    
+    # Load qrels
+    qrels = get_qrels(topics_name)
+    
+    # Get BM25 results for each query
+    print(f"Running BM25 retrieval for {len(topics)} queries...")
+    queries = {}
+    bm25_results = {}
+    
+    for qid, topic in tqdm(topics.items(), desc="BM25 Search"):
+        query = topic['title'] if isinstance(topic, dict) else topic
+        queries[qid] = query
+        
+        # Search
+        hits = searcher.search(query, k=top_k)
+        
+        # Get documents
+        docs = []
+        for hit in hits:
+            doc = searcher.doc(hit.docid)
+            if doc:
+                raw = json.loads(doc.raw())
+                docs.append({
+                    'docid': hit.docid,
+                    'contents': raw.get('contents', raw.get('text', '')),
+                    'score': hit.score
+                })
+        
+        bm25_results[qid] = docs
+    
+    return queries, bm25_results, qrels
+
+
+def compute_ndcg(rankings: dict, qrels: dict, k: int = 10) -> float:
+    """Compute NDCG@k."""
+    import numpy as np
+    
+    ndcg_scores = []
+    
+    for qid, ranking in rankings.items():
+        # Try both string and int keys for qrels lookup
+        qid_int = int(qid) if isinstance(qid, str) and qid.isdigit() else qid
+        qid_str = str(qid)
+        
+        if qid in qrels:
+            rel_labels = qrels[qid]
+        elif qid_int in qrels:
+            rel_labels = qrels[qid_int]
+        elif qid_str in qrels:
+            rel_labels = qrels[qid_str]
+        else:
+            continue
+            
+        # Get DCG
+        dcg = 0.0
+        for i, (docid, _) in enumerate(ranking[:k]):
+            # Try both string and int for docid lookup
+            docid_int = int(docid) if isinstance(docid, str) and docid.isdigit() else docid
+            docid_str = str(docid)
+            
+            rel = 0
+            if docid in rel_labels:
+                rel = int(rel_labels[docid])
+            elif docid_int in rel_labels:
+                rel = int(rel_labels[docid_int])
+            elif docid_str in rel_labels:
+                rel = int(rel_labels[docid_str])
+            
+            if rel > 0:
+                dcg += (2**rel - 1) / np.log2(i + 2)
+        
+        # Get ideal DCG
+        ideal_rels = sorted([int(v) for v in rel_labels.values()], reverse=True)[:k]
+        idcg = sum((2**rel - 1) / np.log2(i + 2) for i, rel in enumerate(ideal_rels))
+        
+        if idcg > 0:
+            ndcg_scores.append(dcg / idcg)
+    
+    return np.mean(ndcg_scores) if ndcg_scores else 0.0
+
+
+def run_beir_experiment(dataset_name: str, model_name: str, output_dir: str):
+    """Run GCCP experiment on a BEIR dataset."""
+    
+    print("=" * 70)
+    print(f"BEIR Evaluation: {dataset_name}")
+    print(f"Model: {model_name}")
+    print("=" * 70)
+    
+    start_time = datetime.now()
+    
+    # Load data
+    queries, bm25_results, qrels = get_beir_data(dataset_name)
+    
+    print(f"\nDataset: {dataset_name}")
+    print(f"Queries: {len(queries)}")
+    
+    # Model mapping
+    model_map = {
+        'flan-t5-large': 'google/flan-t5-large',
+        'flan-t5-xl': 'google/flan-t5-xl',
+        'flan-ul2': 'google/flan-ul2',
+    }
+    hf_model = model_map.get(model_name, model_name)
+    
+    # Initialize rankers
+    print(f"\nLoading model: {hf_model}")
+    rgyn_ranker = RGYNRanker(hf_model)
+    gccp_ranker = GCCPRanker(hf_model)
+    
+    # Results storage
+    rgyn_rankings = {}
+    gccp_rankings = {}
+    pagc_rankings = {}
+    
+    # Process queries
+    for qid, query in tqdm(queries.items(), desc="Processing queries"):
+        documents = bm25_results[qid]
+        
+        if not documents or len(documents) < 2:
+            continue
+        
+        try:
+            # RG-YN
+            rgyn_scores = rgyn_ranker.rank(query, documents)
+            rgyn_rankings[qid] = rgyn_scores
+            
+            # GCCP
+            gccp_scores, anchor = gccp_ranker.rank(query, documents)
+            gccp_rankings[qid] = gccp_scores
+            
+            # PAGC (linear combination)
+            rgyn_dict = {docid: score for docid, score in rgyn_scores}
+            gccp_dict = {docid: score for docid, score in gccp_scores}
+        
+            pagc_scores = []
+            for docid in rgyn_dict:
+                combined = rgyn_dict[docid] + gccp_dict.get(docid, 0)
+                pagc_scores.append((docid, combined))
+            pagc_scores.sort(key=lambda x: x[1], reverse=True)
+            pagc_rankings[qid] = pagc_scores
+        except Exception as e:
+            print(f"Warning: Error processing query {qid}: {e}")
+            continue
+    
+    # Compute BM25 baseline
+    bm25_rankings = {
+        qid: [(doc['docid'], doc['score']) for doc in docs]
+        for qid, docs in bm25_results.items()
+    }
+    
+    # Evaluate
+    bm25_ndcg = compute_ndcg(bm25_rankings, qrels)
+    rgyn_ndcg = compute_ndcg(rgyn_rankings, qrels)
+    gccp_ndcg = compute_ndcg(gccp_rankings, qrels)
+    pagc_ndcg = compute_ndcg(pagc_rankings, qrels)
+    
+    elapsed = datetime.now() - start_time
+    
+    # Print results
+    print("\n" + "=" * 70)
+    print(f"Results: {dataset_name} - {model_name}")
+    print(f"Time: {elapsed}")
+    print("=" * 70)
+    print(f"\n{'Method':<25} {'NDCG@10':>12}")
+    print("-" * 40)
+    print(f"{'BM25':<25} {bm25_ndcg:>12.4f}")
+    print(f"{'RG-YN':<25} {rgyn_ndcg:>12.4f}")
+    print(f"{'GCCP':<25} {gccp_ndcg:>12.4f}")
+    print(f"{'PAGC (RG-YN+GCCP)':<25} {pagc_ndcg:>12.4f}")
+    
+    # Compare with paper
+    if dataset_name in PAPER_RESULTS:
+        paper = PAPER_RESULTS[dataset_name]
+        print(f"\nPaper comparison:")
+        print(f"  RG-YN: {rgyn_ndcg:.4f} vs {paper['RG-YN']:.4f} (gap: {(paper['RG-YN']-rgyn_ndcg)*100:.1f}%)")
+        print(f"  GCCP:  {gccp_ndcg:.4f} vs {paper['GCCP']:.4f} (gap: {(paper['GCCP']-gccp_ndcg)*100:.1f}%)")
+        print(f"  PAGC:  {pagc_ndcg:.4f} vs {paper['PAGC']:.4f} (gap: {(paper['PAGC']-pagc_ndcg)*100:.1f}%)")
+    
+    # Save results
+    os.makedirs(output_dir, exist_ok=True)
+    
+    results = {
+        'experiment': {
+            'dataset': dataset_name,
+            'model': model_name,
+            'num_queries': len(queries),
+            'elapsed': str(elapsed),
+            'timestamp': datetime.now().isoformat()
+        },
+        'results': {
+            'bm25': {'ndcg@10': bm25_ndcg},
+            'rg_yn': {'ndcg@10': rgyn_ndcg},
+            'gccp': {'ndcg@10': gccp_ndcg},
+            'pagc': {'ndcg@10': pagc_ndcg}
+        }
+    }
+    
+    if dataset_name in PAPER_RESULTS:
+        results['paper_comparison'] = PAPER_RESULTS[dataset_name]
+    
+    with open(os.path.join(output_dir, 'metrics.json'), 'w') as f:
+        json.dump(results, f, indent=2)
+    
+    print(f"\nResults saved to {output_dir}/")
+    
+    return results
+
+
+def main():
+    parser = argparse.ArgumentParser(description='BEIR Benchmark Evaluation')
+    parser.add_argument('--dataset', type=str, default='scifact',
+                        help='BEIR dataset name or "all"')
+    parser.add_argument('--model', type=str, default='flan-t5-large',
+                        choices=['flan-t5-large', 'flan-t5-xl', 'flan-ul2'])
+    parser.add_argument('--output_dir', type=str, default=None)
+    
+    args = parser.parse_args()
+    
+    if args.dataset == 'all':
+        datasets = BEIR_DATASETS
+    else:
+        datasets = [args.dataset]
+    
+    all_results = {}
+    
+    for dataset in datasets:
+        output_dir = args.output_dir or f'results/beir_{dataset}_{args.model.replace("/", "_")}'
+        
+        try:
+            results = run_beir_experiment(dataset, args.model, output_dir)
+            all_results[dataset] = results
+        except Exception as e:
+            print(f"Error processing {dataset}: {e}")
+            continue
+    
+    # Summary
+    if len(all_results) > 1:
+        print("\n" + "=" * 70)
+        print("BEIR Summary")
+        print("=" * 70)
+        print(f"\n{'Dataset':<20} {'RG-YN':>10} {'GCCP':>10} {'PAGC':>10}")
+        print("-" * 55)
+        for dataset, res in all_results.items():
+            r = res['results']
+            print(f"{dataset:<20} {r['rg_yn']['ndcg@10']:>10.4f} {r['gccp']['ndcg@10']:>10.4f} {r['pagc']['ndcg@10']:>10.4f}")
+
+
+if __name__ == '__main__':
+    main()

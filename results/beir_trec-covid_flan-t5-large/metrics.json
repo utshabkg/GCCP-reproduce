@@ -1,0 +1,28 @@
+{
+  "experiment": {
+    "dataset": "trec-covid",
+    "model": "flan-t5-large",
+    "num_queries": 50,
+    "elapsed": "0:04:07.975545",
+    "timestamp": "2026-03-27T18:03:06.005849"
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.5695763324909175
+    },
+    "rg_yn": {
+      "ndcg@10": 0.6647105984028191
+    },
+    "gccp": {
+      "ndcg@10": 0.6945584934810791
+    },
+    "pagc": {
+      "ndcg@10": 0.7026422599426685
+    }
+  },
+  "paper_comparison": {
+    "RG-YN": 0.7311,
+    "GCCP": 0.7298,
+    "PAGC": 0.7711
+  }
+}
