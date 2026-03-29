@@ -103,49 +103,29 @@ def get_beir_data(dataset_name: str, top_k: int = 100):
 
 
 def compute_ndcg(rankings: dict, qrels: dict, k: int = 10) -> float:
-    """Compute NDCG@k."""
+    """Compute NDCG@k using pytrec_eval for accuracy."""
+    import pytrec_eval
     import numpy as np
     
-    ndcg_scores = []
-    
+    # Convert rankings to pytrec_eval format: {qid: {docid: score}}
+    run = {}
     for qid, ranking in rankings.items():
-        # Try both string and int keys for qrels lookup
-        qid_int = int(qid) if isinstance(qid, str) and qid.isdigit() else qid
         qid_str = str(qid)
-        
-        if qid in qrels:
-            rel_labels = qrels[qid]
-        elif qid_int in qrels:
-            rel_labels = qrels[qid_int]
-        elif qid_str in qrels:
-            rel_labels = qrels[qid_str]
-        else:
-            continue
-            
-        # Get DCG
-        dcg = 0.0
-        for i, (docid, _) in enumerate(ranking[:k]):
-            # Try both string and int for docid lookup
-            docid_int = int(docid) if isinstance(docid, str) and docid.isdigit() else docid
-            docid_str = str(docid)
-            
-            rel = 0
-            if docid in rel_labels:
-                rel = int(rel_labels[docid])
-            elif docid_int in rel_labels:
-                rel = int(rel_labels[docid_int])
-            elif docid_str in rel_labels:
-                rel = int(rel_labels[docid_str])
-            
-            if rel > 0:
-                dcg += (2**rel - 1) / np.log2(i + 2)
-        
-        # Get ideal DCG
-        ideal_rels = sorted([int(v) for v in rel_labels.values()], reverse=True)[:k]
-        idcg = sum((2**rel - 1) / np.log2(i + 2) for i, rel in enumerate(ideal_rels))
-        
-        if idcg > 0:
-            ndcg_scores.append(dcg / idcg)
+        run[qid_str] = {str(docid): float(score) for docid, score in ranking[:100]}
+    
+    # Convert qrels to pytrec_eval format: {qid: {docid: int_relevance}}
+    qrels_dict = {}
+    for qid, rels in qrels.items():
+        qid_str = str(qid)
+        qrels_dict[qid_str] = {str(docid): int(rel) for docid, rel in rels.items()}
+    
+    # Evaluate using pytrec_eval (matches official trec_eval)
+    evaluator = pytrec_eval.RelevanceEvaluator(qrels_dict, {f'ndcg_cut_{k}'})
+    results = evaluator.evaluate(run)
+    
+    # Get mean NDCG@k
+    metric_name = f'ndcg_cut_{k}'
+    ndcg_scores = [v[metric_name] for qid, v in results.items() if qid in run]
     
     return np.mean(ndcg_scores) if ndcg_scores else 0.0
 
