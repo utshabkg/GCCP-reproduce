@@ -250,10 +250,12 @@ def run_beir_experiment(dataset_name: str, model_name: str, output_dir: str):
     if dataset_name in PAPER_RESULTS:
         results['paper_comparison'] = PAPER_RESULTS[dataset_name]
     
-    with open(os.path.join(output_dir, 'metrics.json'), 'w') as f:
+    # Save with model name in filename
+    output_file = os.path.join(output_dir, f'{model_name}_metrics.json')
+    with open(output_file, 'w') as f:
         json.dump(results, f, indent=2)
     
-    print(f"\nResults saved to {output_dir}/")
+    print(f"\nResults saved to {output_file}")
     
     return results
 
@@ -276,7 +278,8 @@ def main():
     all_results = {}
     
     for dataset in datasets:
-        output_dir = args.output_dir or f'results/beir_{dataset}_{args.model.replace("/", "_")}'
+        # New structure: results/beir/{dataset}/{model}_metrics.json
+        output_dir = args.output_dir or f'results/beir/{dataset}'
         
         try:
             results = run_beir_experiment(dataset, args.model, output_dir)
