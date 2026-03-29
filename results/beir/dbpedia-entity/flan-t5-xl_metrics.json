@@ -1,0 +1,28 @@
+{
+  "experiment": {
+    "dataset": "dbpedia-entity",
+    "model": "flan-t5-xl",
+    "num_queries": 400,
+    "elapsed": "0:40:43.195282",
+    "timestamp": "2026-03-28T23:15:47.221154"
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.318000026395424
+    },
+    "rg_yn": {
+      "ndcg@10": 0.3101833168682375
+    },
+    "gccp": {
+      "ndcg@10": 0.41936384579323416
+    },
+    "pagc": {
+      "ndcg@10": 0.4060889213752699
+    }
+  },
+  "paper_comparison": {
+    "RG-YN": 0.3478,
+    "GCCP": 0.4251,
+    "PAGC": 0.4181
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "experiment": {
+    "dataset": "scifact",
+    "model": "flan-t5-xl",
+    "num_queries": 300,
+    "elapsed": "0:32:45.384796",
+    "timestamp": "2026-03-28T22:01:20.356845"
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.6789094274508312
+    },
+    "rg_yn": {
+      "ndcg@10": 0.6388980477536857
+    },
+    "gccp": {
+      "ndcg@10": 0.6814624918554089
+    },
+    "pagc": {
+      "ndcg@10": 0.6840100908014771
+    }
+  },
+  "paper_comparison": {
+    "RG-YN": 0.5635,
+    "GCCP": 0.5871,
+    "PAGC": 0.6145
+  }
+}

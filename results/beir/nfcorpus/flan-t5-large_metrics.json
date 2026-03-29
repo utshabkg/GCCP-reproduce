@@ -1,0 +1,28 @@
+{
+  "experiment": {
+    "dataset": "nfcorpus",
+    "model": "flan-t5-large",
+    "num_queries": 323,
+    "elapsed": "0:21:55.591937",
+    "timestamp": "2026-03-28T21:17:01.884370"
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.32178412189448596
+    },
+    "rg_yn": {
+      "ndcg@10": 0.3329124354911351
+    },
+    "gccp": {
+      "ndcg@10": 0.34401168363076373
+    },
+    "pagc": {
+      "ndcg@10": 0.3619718483292525
+    }
+  },
+  "paper_comparison": {
+    "RG-YN": 0.3349,
+    "GCCP": 0.3504,
+    "PAGC": 0.3638
+  }
+}

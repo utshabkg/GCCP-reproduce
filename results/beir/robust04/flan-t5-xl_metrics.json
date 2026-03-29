@@ -1,0 +1,28 @@
+{
+  "experiment": {
+    "dataset": "robust04",
+    "model": "flan-t5-xl",
+    "num_queries": 249,
+    "elapsed": "0:28:28.935095",
+    "timestamp": "2026-03-29T02:10:55.696983"
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.406976028138998
+    },
+    "rg_yn": {
+      "ndcg@10": 0.5050742373516303
+    },
+    "gccp": {
+      "ndcg@10": 0.5194232057903123
+    },
+    "pagc": {
+      "ndcg@10": 0.5279353291628431
+    }
+  },
+  "paper_comparison": {
+    "RG-YN": 0.4605,
+    "GCCP": 0.4427,
+    "PAGC": 0.4914
+  }
+}
