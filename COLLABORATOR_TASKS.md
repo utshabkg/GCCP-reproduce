@@ -1,9 +1,8 @@
 # GCCP Reproducibility Study - Collaborator Task Distribution
 
 **Date:** March 30, 2026  
-**Project Lead:** Utshab  
 **Repository:** https://github.com/utshabkg/GCCP-reproduce  
-**Target:** A* Conference Reproducibility Track (ACL/EMNLP/NeurIPS)
+**Target:** A* Conference Reproducibility Track (CIKM/EMNLP/NeurIPS)
 
 ---
 
@@ -17,8 +16,8 @@
 | Core Implementation | ✅ Done | RG-YN, GCCP, PAGC, Spectral MDS |
 | Critical Bug Fixes | ✅ Done | 6+ undocumented implementation details discovered |
 | TREC DL19/DL20 | ✅ Done | All 3 models (T5-Large, T5-XL, UL2) |
-| BEIR T5-Large | ✅ Done | All 8 datasets |
-| BEIR T5-XL | ✅ Done | All 8 datasets |
+| BEIR with T5-Large model | ✅ Done | All 8 datasets |
+| BEIR with T5-XL model | ✅ Done | All 8 datasets |
 | BEIR UL2 | 🔄 Running | ~5 days remaining (do not interrupt!) |
 
 ### 📈 Results Achieved
@@ -232,7 +231,7 @@ GCCP-reproduce/
 
 ---
 
-## 🖥️ Mill Setup Instructions
+## 🖥️ Mill Setup Instructions (Seeing Documentation would be better as I am not sure of this one below)
 
 ```bash
 # Request GPU node
@@ -282,7 +281,7 @@ git push origin yourname/feature/workname
 
 ## 📞 Questions?
 
-Contact Utshab for:
+Contact Utshab on Discord/Email for:
 - Implementation details
 - Clarification on findings
 - Code review
