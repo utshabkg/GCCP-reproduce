@@ -1,0 +1,28 @@
+{
+  "experiment": {
+    "dataset": "trec-news",
+    "model": "flan-ul2",
+    "num_queries": 57,
+    "elapsed": "0:25:17.475836",
+    "timestamp": "2026-03-31T21:01:59.678476"
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.39522519065788686
+    },
+    "rg_yn": {
+      "ndcg@10": 0.43284364825136107
+    },
+    "gccp": {
+      "ndcg@10": 0.4762052906932966
+    },
+    "pagc": {
+      "ndcg@10": 0.4562686864068334
+    }
+  },
+  "paper_comparison": {
+    "RG-YN": 0.3691,
+    "GCCP": 0.4338,
+    "PAGC": 0.4112
+  }
+}

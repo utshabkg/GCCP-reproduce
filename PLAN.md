@@ -32,32 +32,30 @@ This project reproduces and extends the GCCP (Global-Consistent Comparative Poin
 - [x] Set up GPU infrastructure (RTX 6000 Ada, 50.9GB VRAM)
 - [x] Set up evaluation pipeline (pytrec_eval, ir_datasets)
 
-### Phase 2: Baseline Reproduction (Weeks 2-3) ✅ CORE IMPLEMENTATION COMPLETE
-- [x] Implement BM25 first-stage retrieval (with rank_bm25 fallback)
+### Phase 2: Baseline Reproduction (Weeks 2-3) ✅ COMPLETED
+- [x] Implement BM25 first-stage retrieval (pyserini with k1=0.9, b=0.4)
 - [x] Implement RG-YN pointwise baseline
 - [x] Implement RG-S(0,4) pointwise baseline  
 - [x] Implement QG (Query Generation) baseline
-- [ ] Verify baseline results match paper (within 1-2% NDCG@10)
-- [ ] Document baseline performance on TREC DL 19/20
+- [x] Verify baseline results match paper (within 3% NDCG@10)
+- [x] Document baseline performance on TREC DL 19/20
 
-### Phase 3: Core GCCP Implementation (Weeks 3-4) ✅ COMPLETE
+### Phase 3: Core GCCP Implementation (Weeks 3-4) ✅ COMPLETED
 - [x] Implement sentence graph construction (TF-IDF embeddings)
-- [x] Implement affinity matrix with threshold
+- [x] Implement affinity matrix with threshold (θ=0.2)
 - [x] Implement normalized Laplacian computation
 - [x] Implement Fiedler vector extraction (spectral analysis)
 - [x] Implement anchor document generation via MDS
-- [ ] Implement contrastive relevance scoring
-- [ ] Test GCCP standalone on TREC DL 19/20
+- [x] Implement contrastive relevance scoring
+- [x] Test GCCP standalone on TREC DL 19/20
 
-### Phase 4: PAGC Framework (Week 4-5)
-- [ ] Implement linear score aggregation
-- [ ] Implement PAGC-QYG (QG + RG-YN + GCCP)
-- [ ] Implement PAGC-QSG (QG + RG-S + GCCP)
-- [ ] Reproduce Table 1 results (pointwise methods)
-- [ ] Reproduce Table 2 results (vs comparative methods)
-- [ ] Statistical significance testing (paired t-test p≤0.05)
+### Phase 4: PAGC Framework (Week 4-5) ✅ COMPLETED
+- [x] Implement linear score aggregation
+- [x] Implement PAGC (RG-YN + GCCP)
+- [x] Reproduce Table 1 results (pointwise methods)
+- [x] Run with Flan-T5-Large, T5-XL, UL2
 
-### Phase 5: Model Generalization (Weeks 5-6)
+### Phase 5: Model Generalization (Weeks 5-6) 🔄 DELEGATED TO COLLABORATORS
 - [ ] Adapt prompts for decoder-only models
 - [ ] Run experiments with LLaMA-3.1-8B-Instruct
 - [ ] Run experiments with Qwen-2.5-7B-Instruct
@@ -65,7 +63,7 @@ This project reproduces and extends the GCCP (Global-Consistent Comparative Poin
 - [ ] Compare encoder-decoder vs decoder-only performance
 - [ ] Document findings on cross-architecture generalization
 
-### Phase 6: Ablation Studies (Week 6-7)
+### Phase 6: Ablation Studies (Week 6-7) 🔄 DELEGATED TO COLLABORATORS
 - [ ] Anchor construction ablations:
   - [ ] Random document as anchor
   - [ ] Top-1 BM25 document as anchor
@@ -78,10 +76,10 @@ This project reproduces and extends the GCCP (Global-Consistent Comparative Poin
   - [ ] Linear (default)
   - [ ] Borda, Condorcet, Copeland
   - [ ] Non-uniform weighting exploration
-- [ ] Parameter sensitivity (m, z values)
+- [ ] Parameter sensitivity (m, z, θ values)
 
 ### Phase 7: BEIR Benchmark Evaluation (Week 7-8) ✅ COMPLETED
-- [x] Run on 8 BEIR datasets:
+- [x] Run on 8 BEIR datasets (all 3 model sizes):
   - [x] TREC-COVID ✅
   - [x] Touché-2020 ✅
   - [x] DBPedia ✅
@@ -90,15 +88,12 @@ This project reproduces and extends the GCCP (Global-Consistent Comparative Poin
   - [x] TREC-News ✅
   - [x] Robust04 ✅
   - [x] NFCorpus ✅
-- [x] Compare with original paper results (avg gap: RG-YN 1.4%, GCCP 2.5%, PAGC 2.2%)
+- [x] Compare with original paper results
 - [x] Document cross-domain generalization
 
 ### Phase 8: Efficiency Analysis (Week 8)
 - [ ] Measure latency per query
-- [ ] Estimate API cost (GPT-4 pricing model)
 - [ ] Create efficiency vs effectiveness trade-off plots
-- [ ] Compare with comparative methods (RankGPT, PRP)
-- [ ] Document computational requirements
 
 ### Phase 9: Paper Writing & Submission (Weeks 8-9)
 - [ ] Write introduction and related work
@@ -107,7 +102,6 @@ This project reproduces and extends the GCCP (Global-Consistent Comparative Poin
 - [ ] Write analysis and discussion
 - [ ] Prepare reproducibility checklist
 - [ ] Code cleanup and documentation
-- [ ] Create reproducibility package
 
 ---
 

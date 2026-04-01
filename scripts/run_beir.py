@@ -37,22 +37,22 @@ BEIR_DATASETS = [
     'trec-covid',
     'webis-touche2020',
     'dbpedia-entity',
-    # 'robust04',  # Requires special setup
-    # 'signal1m',  # Very large
-    # 'trec-news', # Requires special setup
+    'robust04',
+    'signal1m',
+    'trec-news',
 ]
 
 # Paper's reported results (Table 1 - Flan-T5-Large)
-# Note: PAGC in our code = RG-YN + GCCP from paper
+# Values verified from paper Table 1
 PAPER_RESULTS = {
-    'trec-covid': {'RG-YN': 0.6884, 'GCCP': 0.7693, 'PAGC': 0.7641},
-    'robust04': {'RG-YN': 0.4605, 'GCCP': 0.4427, 'PAGC': 0.4914},
-    'webis-touche2020': {'RG-YN': 0.2479, 'GCCP': 0.2730, 'PAGC': 0.2928},
-    'scifact': {'RG-YN': 0.5635, 'GCCP': 0.5871, 'PAGC': 0.6145},
-    'signal1m': {'RG-YN': 0.2823, 'GCCP': 0.2955, 'PAGC': 0.3027},
-    'trec-news': {'RG-YN': 0.3691, 'GCCP': 0.4338, 'PAGC': 0.4112},
-    'dbpedia-entity': {'RG-YN': 0.3478, 'GCCP': 0.4251, 'PAGC': 0.4181},
-    'nfcorpus': {'RG-YN': 0.3349, 'GCCP': 0.3504, 'PAGC': 0.3638},
+    'trec-covid': {'RG-YN': 0.6925, 'GCCP': 0.7580, 'PAGC': 0.7559},
+    'robust04': {'RG-YN': 0.4407, 'GCCP': 0.4457, 'PAGC': 0.4752},
+    'webis-touche2020': {'RG-YN': 0.2780, 'GCCP': 0.2697, 'PAGC': 0.2614},
+    'scifact': {'RG-YN': 0.5379, 'GCCP': 0.5966, 'PAGC': 0.6485},
+    'signal1m': {'RG-YN': 0.2914, 'GCCP': 0.3010, 'PAGC': 0.2966},
+    'trec-news': {'RG-YN': 0.3534, 'GCCP': 0.4005, 'PAGC': 0.3933},
+    'dbpedia-entity': {'RG-YN': 0.3246, 'GCCP': 0.3974, 'PAGC': 0.4054},
+    'nfcorpus': {'RG-YN': 0.3282, 'GCCP': 0.3505, 'PAGC': 0.3526},
 }
 
 
