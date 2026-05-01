@@ -1,0 +1,84 @@
+{
+  "trec-dl/dl19/flan-t5-xl_e5": {
+    "n_queries": 43,
+    "comparisons": {
+      "PAGC vs RG-YN": {
+        "baseline_mean": 0.6751925786455399,
+        "system_mean": 0.7184891795004005,
+        "delta_mean": 0.04329660085486056,
+        "p_value": 0.004,
+        "ci_95_lo": 0.014655176261225202,
+        "ci_95_hi": 0.07217694334100971,
+        "n_better": 27,
+        "n_worse": 12,
+        "n_tied": 4,
+        "significance": "**"
+      },
+      "PAGC vs GCCP": {
+        "baseline_mean": 0.7089808240142855,
+        "system_mean": 0.7184891795004005,
+        "delta_mean": 0.009508355486114861,
+        "p_value": 0.516,
+        "ci_95_lo": -0.015785619858985488,
+        "ci_95_hi": 0.03642734853397289,
+        "n_better": 16,
+        "n_worse": 18,
+        "n_tied": 9,
+        "significance": "ns"
+      },
+      "GCCP vs RG-YN": {
+        "baseline_mean": 0.6751925786455399,
+        "system_mean": 0.7089808240142855,
+        "delta_mean": 0.033788245368745695,
+        "p_value": 0.102,
+        "ci_95_lo": -0.006533670278208124,
+        "ci_95_hi": 0.07436099474929332,
+        "n_better": 24,
+        "n_worse": 16,
+        "n_tied": 3,
+        "significance": "ns"
+      }
+    }
+  },
+  "trec-dl/dl20/flan-t5-xl_e5": {
+    "n_queries": 54,
+    "comparisons": {
+      "PAGC vs RG-YN": {
+        "baseline_mean": 0.6788779103522843,
+        "system_mean": 0.7176621805687953,
+        "delta_mean": 0.03878427021651115,
+        "p_value": 0.044,
+        "ci_95_lo": 0.0023816201591925434,
+        "ci_95_hi": 0.07790159194052126,
+        "n_better": 34,
+        "n_worse": 15,
+        "n_tied": 5,
+        "significance": "*"
+      },
+      "PAGC vs GCCP": {
+        "baseline_mean": 0.7069280947543389,
+        "system_mean": 0.7176621805687953,
+        "delta_mean": 0.01073408581445642,
+        "p_value": 0.324,
+        "ci_95_lo": -0.011984673695543858,
+        "ci_95_hi": 0.03045500302389953,
+        "n_better": 26,
+        "n_worse": 18,
+        "n_tied": 10,
+        "significance": "ns"
+      },
+      "GCCP vs RG-YN": {
+        "baseline_mean": 0.6788779103522843,
+        "system_mean": 0.7069280947543389,
+        "delta_mean": 0.02805018440205473,
+        "p_value": 0.208,
+        "ci_95_lo": -0.01354626265746682,
+        "ci_95_hi": 0.07446699953602015,
+        "n_better": 31,
+        "n_worse": 22,
+        "n_tied": 1,
+        "significance": "ns"
+      }
+    }
+  }
+}

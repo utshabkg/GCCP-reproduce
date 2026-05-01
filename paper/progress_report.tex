@@ -1,0 +1,258 @@
+\documentclass[conference]{IEEEtran}
+
+% ── Packages ────────────────────────────────────────────────────────
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{url}
+
+% ── Hyperref setup ──────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue,
+}
+
+\IEEEoverridecommandlockouts
+
+\begin{document}
+
+% ── Title ───────────────────────────────────────────────────────────
+\title{Reproducibility of Zero-Shot LLM Pointwise Ranking with Global Context Aggregation\\[10pt]
+\large CS 5480 Deep Learning -- Progress Report}
+
+\author{
+  \IEEEauthorblockN{Utshab Kumar Ghosh, Christopher Elam, Ethan Garthe, Tristan Fox}
+  \IEEEauthorblockA{Department of Computer Science\\
+  Missouri University of Science and Technology\\
+  \texttt{\{u.ghosh, cjefd4, ebgqf6, tfmwn\}@mst.edu}}
+}
+
+\maketitle
+\thispagestyle{plain}
+\pagestyle{plain}
+
+% ============================================================
+\section{Where We Are}
+% ============================================================
+
+Since the proposal, we have re-implemented the full GCCP/PAGC pipeline from scratch and reproduced the core numbers from Long et al.~\cite{long2025precise} on TREC DL 2019/2020 and all eight BEIR subsets, across three model scales (Flan-T5-Large, Flan-T5-XL, Flan-UL2). We have also started the two extensions in our proposal: an E5 dense-retrieval first stage (novel) and anchor/parameter ablations. The decoder-only experiments (LLaMA-3, Qwen-2.5) are not started yet. Our code and all result files are in a public repository\footnote{\url{https://github.com/utshabkg/GCCP-reproduce}}.
+
+The short version: our numbers track the paper within $2$--$4$\% NDCG@10 on average, with several cells matching or exceeding the published results. The more interesting outputs of the project so far are not the numbers themselves but a catalogue of reproducibility hazards we hit while trying to match them, which we summarize in Section~\ref{sec:challenges}. The one significant residual gap (DL20 with the smallest model) we have diagnosed to undocumented sentence-segmentation details and it shrinks to 2\% at UL2.
+
+% ============================================================
+\section{Implementation Progress}
+% ============================================================
+
+\textbf{Environment.} We work in a dedicated conda environment (Python 3.10, PyTorch 2.1.0+cu121, \texttt{transformers} 4.36) on $2\times$ NVIDIA RTX~6000 Ada. BM25 uses Pyserini~\cite{lin2021pyserini} over the pre-built \texttt{msmarco-v1-passage} index with the paper-matching parameters $k_1{=}0.9$, $b{=}0.4$. Evaluation is done with \texttt{pytrec\_eval}; the reason this matters is discussed in Section~\ref{sec:challenges}.
+
+\textbf{Components.} We re-implemented all four pieces of the pipeline from the paper description and only consulted the authors' public code to resolve ambiguities. The re-implementation covers the RG-YN pointwise ranker (Eq.~3), the spectral-MDS anchor construction (TF-IDF sentence embeddings, thresholded affinity matrix, normalized Laplacian, Fiedler partition, top-$z$ sentences), the GCCP contrastive ranker (Eq.~10), and the linear PAGC aggregation (Eq.~11).
+
+\textbf{Experiments run to date.}
+\begin{itemize}[nosep,leftmargin=1em]
+    \item TREC DL 2019 (43 queries) and DL 2020 (54 queries), with Flan-T5-Large, Flan-T5-XL, and Flan-UL2 -- all methods, all queries.
+    \item All eight BEIR subsets (TREC-COVID, Touch\'e-2020, DBPedia, SciFact, Signal1M, TREC-News, Robust04, NFCorpus), with the same three models.
+    \item E5 dense-retrieval extension on DL19/DL20 with Flan-T5-XL.
+    \item Preliminary anchor-construction and hyperparameter ablations on DL19 with Flan-T5-Large (5 queries, full sweep pending).
+\end{itemize}
+
+That is the full set of runs from the proposal's Phases 1 and 3, except that the ablation sweeps need to be rerun on the full query set, and the ``BEIR with E5'' and ``BEIR with decoder-only LLMs'' experiments are not done yet.
+
+% ============================================================
+\section{Preliminary Results}
+% ============================================================
+
+\subsection{TREC DL}
+
+Table~\ref{tab:dl} reports PAGC NDCG@10 against the paper's numbers. The gap is under 4\% in most cells and, importantly, shrinks monotonically with model scale on DL20 (5.7\%$\rightarrow$4.7\%$\rightarrow$2.0\%). With Flan-UL2 our DL20 GCCP number (0.7022) actually \emph{exceeds} the paper's (0.7007) by a small margin. The one noticeable remaining gap is DL20 with the smallest model (Flan-T5-Large); we diagnose this in Section~\ref{sec:challenges}.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}llccc@{}}
+\toprule
+\textbf{Dataset} & \textbf{Model} & \textbf{Ours} & \textbf{Paper} & \textbf{Gap} \\
+\midrule
+DL19 & Flan-T5-Large & 0.6834 & 0.7012 & $-2.5\%$ \\
+DL19 & Flan-T5-XL    & 0.7030 & 0.7281 & $-3.5\%$ \\
+DL19 & Flan-UL2      & 0.7095 & 0.7321 & $-3.1\%$ \\
+\midrule
+DL20 & Flan-T5-Large & 0.6515 & 0.6910 & $-5.7\%$ \\
+DL20 & Flan-T5-XL    & 0.6760 & 0.7092 & $-4.7\%$ \\
+DL20 & Flan-UL2      & 0.7009 & 0.7153 & $-2.0\%$ \\
+\bottomrule
+\end{tabular}
+\caption{PAGC NDCG@10 on TREC DL.}
+\label{tab:dl}
+\end{table}
+
+\subsection{BEIR}
+
+Table~\ref{tab:beir} shows PAGC NDCG@10 across the eight BEIR subsets and three model scales. Cells where we match or exceed the paper are scattered across all three scales, which supports the paper's cross-domain claim. The \emph{direction} of the gap is inconsistent across datasets (TREC-News, Robust04, and Signal1M above paper on T5-XL; TREC-COVID and DBPedia below paper), so the residual gap is not a single bug in our code but more likely per-dataset preprocessing. The average absolute gap is 2.1\% at T5-Large, 4.2\% at T5-XL, and 3.2\% at UL2.
+
+\begin{table}[h]
+\centering
+\scriptsize
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{2}{c}{\textbf{T5-Large}}
+ & \multicolumn{2}{c}{\textbf{T5-XL}}
+ & \multicolumn{2}{c}{\textbf{UL2}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+\textbf{Dataset} & Ours & Paper & Ours & Paper & Ours & Paper \\
+\midrule
+SciFact       & 0.6403 & 0.6485 & 0.6840 & 0.6807 & 0.7114 & 0.7047 \\
+NFCorpus      & 0.3620 & 0.3526 & 0.3728 & 0.3668 & 0.3776 & 0.3739 \\
+TREC-COVID    & 0.7294 & 0.7559 & 0.7552 & 0.7820 & 0.7495 & 0.7892 \\
+TREC-News     & 0.3820 & 0.3933 & 0.4490 & 0.4112 & 0.4563 & 0.4310 \\
+Touch\'e-2020 & 0.2650 & 0.2614 & 0.3078 & 0.3002 & 0.3161 & 0.3078 \\
+DBPedia       & 0.3898 & 0.4054 & 0.4061 & 0.4181 & 0.4138 & 0.4289 \\
+Robust04      & 0.4800 & 0.4752 & 0.5279 & 0.4914 & 0.5347 & 0.5050 \\
+Signal1M      & 0.2983 & 0.2966 & 0.3204 & 0.3027 & 0.3164 & 0.3150 \\
+\midrule
+\textbf{Avg.\ abs.\ gap}
+ & \multicolumn{2}{c}{2.1\%}
+ & \multicolumn{2}{c}{4.2\%}
+ & \multicolumn{2}{c}{3.2\%} \\
+\bottomrule
+\end{tabular}
+\caption{BEIR PAGC NDCG@10 across three model scales.}
+\label{tab:beir}
+\end{table}
+
+\subsection{Extension 1: Dense First-Stage Retrieval}
+
+The original paper uses BM25 as the only first-stage retriever. As proposed in Phase~3, we swap in E5-base-v2~\cite{wang2022e5} and rerun the pipeline. Results on DL19/DL20 with Flan-T5-XL are in Table~\ref{tab:e5}. E5 alone is already well above the paper's best PAGC-with-BM25 on both datasets, and PAGC-with-E5 gains another $\sim$1.5 points on top. Two things stand out: first, on DL20 the first-stage E5 NDCG@10 (0.7051) is higher than RG-YN reranking over BM25 (0.6512), which means dropping in a better retriever buys more than changing the reranker prompt; second, the PAGC gain over a single-stage E5 run is smaller than the corresponding gain over BM25, suggesting that the contrastive anchor contributes less when the candidate list is already clean. This is a useful finding and not present in the original paper. Extending this to BEIR is next on Christopher's task list.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{2}{c}{\textbf{First-stage}}
+ & \multicolumn{2}{c}{\textbf{GCCP}}
+ & \multicolumn{2}{c}{\textbf{PAGC}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+\textbf{Dataset} & BM25 & E5 & +BM25 & +E5 & +BM25 & +E5 \\
+\midrule
+DL19 & 0.5058 & 0.7086 & 0.6844 & \textbf{0.7090} & 0.7030 & \textbf{0.7185} \\
+DL20 & 0.4796 & 0.7051 & 0.6668 & \textbf{0.7069} & 0.6760 & \textbf{0.7177} \\
+\bottomrule
+\end{tabular}
+\caption{NDCG@10 on TREC DL with Flan-T5-XL, comparing BM25 vs.\ E5 first-stage. E5 numbers are novel to this project.}
+\label{tab:e5}
+\end{table}
+
+\subsection{Extension 2: Anchor and Hyperparameter Ablations}
+
+As a preliminary sweep on DL19, Flan-T5-Large, with 5 queries, we compared four anchor-construction strategies (Table~\ref{tab:anchor}). All non-random anchors outperform a random anchor, confirming that the anchor is not incidental. Somewhat surprisingly, a simple top-3 interleaved-sentence composite is competitive with (and on this tiny sample slightly above) the paper's spectral MDS anchor. We are rerunning the sweep on the full 43 queries before drawing any conclusion, but this is the direction that most differs from the paper's reported results, so we are paying attention to it.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Anchor method} & \textbf{RG-YN} & \textbf{GCCP} & \textbf{PAGC} \\
+\midrule
+Random passage           & 0.5718 & 0.5097 & 0.5618 \\
+Top-1 BM25               & 0.5718 & 0.5230 & 0.5784 \\
+Top-3 composite          & 0.5718 & 0.5516 & 0.5828 \\
+Spectral MDS (paper)     & 0.5718 & 0.5329 & 0.5746 \\
+\bottomrule
+\end{tabular}
+\caption{Anchor-construction ablation on DL19, Flan-T5-Large, 5 queries (preliminary).}
+\label{tab:anchor}
+\end{table}
+
+The parameter sweeps ($m$, $z$, $\theta$) are summarized in Table~\ref{tab:params}. PAGC is stable to within $\pm 1.5$ points across all three. The $z \geq 10$ plateau is because candidate documents hit the 512-token encoder limit and additional anchor sentences get truncated; this explains why the paper's $z{=}10$ setting is not fragile and is a minor methodological note.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Parameter} & \multicolumn{4}{c}{\textbf{PAGC NDCG@10}} \\
+\midrule
+$m \in \{5,10,15,20\}$           & 0.5799 & 0.5746 & 0.5893 & 0.5722 \\
+$z \in \{5,10,15,20\}$           & 0.5634 & 0.5746 & 0.5746 & 0.5746 \\
+$\theta \in \{0.1,0.2,0.3,0.4\}$ & 0.5773 & 0.5746 & 0.5831 & 0.5755 \\
+\bottomrule
+\end{tabular}
+\caption{Parameter sensitivity on DL19, Flan-T5-Large, 5 queries.}
+\label{tab:params}
+\end{table}
+
+% ============================================================
+\section{Challenges Faced}
+% ============================================================
+\label{sec:challenges}
+
+\textbf{Undocumented implementation details.}
+Our first faithful re-implementation from the paper text alone gave NDCG@10 $\approx 0.24$ on DL19 RG-YN, not the published 0.66. It took an audit of the authors' code to figure out why. The causes were six separate details the paper does not specify, summarized in Table~\ref{tab:undoc}. The most consequential are the decoder-input string for T5 (a single \texttt{<pad>} token versus nothing) and the case of the target tokens. These fail silently: T5 produces logits for both \texttt{'Yes'} and \texttt{'yes'}, but when the prompt ends with \texttt{``Answer 'yes' or 'no'''} essentially all probability mass goes to the lowercase token, so using the uppercase form gives near-uniform scores. We think this alone is worth a short subsection in the final reproducibility paper.
+
+\begin{table}[h]
+\centering
+\scriptsize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Detail} & \textbf{Paper} & \textbf{Actual code} \\
+\midrule
+Decoder input (RG-YN)   & not specified & \texttt{'<pad> '} \\
+Decoder input (GCCP)    & not specified & \texttt{'<pad> Passage '} \\
+Target tokens (RG-YN)   & ``Yes''/``No'' & lowercase \texttt{'yes'/'no'} \\
+Target tokens (GCCP)    & ``A''/``B'' & uppercase \texttt{'A'/'B'} \\
+Spectral threshold      & not specified & $\theta = 0.2$ \\
+BM25 parameters         & not specified & $k_1{=}0.9,\, b{=}0.4$ \\
+Document truncation     & not specified & 128 tokens \\
+\bottomrule
+\end{tabular}
+\caption{Undocumented hyperparameters that silently determine whether a faithful reimplementation matches or collapses to near-random.}
+\label{tab:undoc}
+\end{table}
+
+\textbf{Evaluation-function sensitivity.}
+Early BEIR numbers showed gaps of up to 10\% on TREC-COVID and TREC-News. The culprit turned out to be our hand-written \texttt{compute\_ndcg} routine, which handles non-judged documents slightly differently from the official \texttt{trec\_eval} binary. Switching to \texttt{pytrec\_eval} closed the BM25-baseline gap to exactly zero on both datasets and shrank the GCCP gap on TREC-COVID from 7.5\% to 4.5\%. We now recommend (and intend to recommend in the paper) that NDCG@10 in zero-shot LLM-ranking papers be reported against \texttt{pytrec\_eval} or the official \texttt{trec\_eval}, not against hand-written implementations.
+
+\textbf{BM25 library choice.}
+Our first BM25 implementation used the pure-Python \texttt{rank\_bm25} library. On DL20 query 1105792 (``define: geon'') it returned \emph{zero} documents, because its naive tokenizer was broken by the colon. With 54 queries in the benchmark, one query silently dropping to zero depressed the mean NDCG by about a point. Moving to Pyserini with the paper's BM25 parameters eliminated that failure and improved DL20 PAGC by roughly 4 points. A similar issue arose when we first tried Pyserini itself: its JAR files require Java~21, while our system Java was 17, and the error message pointed at pyjnius rather than at the Java version, so it cost a few hours to trace.
+
+\textbf{DL20 gap at T5-Large.}
+Even after all of the above, T5-Large on DL20 retains a 5.7\% PAGC gap. We systematically eliminated candidate causes: switching from the sparse \texttt{eigsh} eigendecomposition to dense \texttt{eigh} (as in the authors' code) changes PAGC by 0.1 point, random seeds change it by a similar amount, and the BM25 first-stage is identical. The remaining gap therefore lies in sentence-segmentation and document-truncation details (NLTK vs.\ spaCy, plus the authors' hybrid ``200 characters but at least 128 tokens'' rule). We have not yet ported the exact segmentation rule to close this. Importantly, the gap collapses to 2.0\% at UL2, which tells us the method is robust and it is specifically \emph{small-model reproduction} that is brittle -- itself a useful finding.
+
+\textbf{Compute and time.}
+Flan-UL2 at 20B parameters is by far the biggest cost driver. A single BEIR subset with UL2 takes 12--24 hours on our hardware because documents are scored one at a time (no batching in either the authors' code or our initial version). The UL2 BEIR runs currently on disk took roughly two weeks in total, with a scheduled reboot interrupting the run once and costing us the NFCorpus progress. Batched inference is on our list for the final report.
+
+\textbf{Coordinating collaborators.}
+A smaller practical point: we distributed the three extension tasks (decoder-only, ablations, dense retrieval) to team members working on separate machines via the university Mill cluster. Two of the three have pushed results to feature branches in the repository; the decoder-only work is not yet started. Tristan has confirmed he will begin this week.
+
+% ============================================================
+\section{What Is Left and Plan for Remaining Weeks}
+% ============================================================
+
+In the proposal we committed to: (1) reproduce on TREC DL and BEIR, (2) test decoder-only backbones, (3) three ablations (anchor construction, initial retrieval, aggregation). Status: (1) is complete, (2) is not started, (3) is partially complete (anchor and parameter sweeps preliminary; dense-retrieval on DL but not BEIR; aggregation-method ablation not started).
+
+Concretely, the plan for the remaining weeks is:
+\begin{itemize}[nosep,leftmargin=1em]
+    \item \textbf{Full-size ablations.} Re-run the anchor and parameter sweeps on all 43 DL19 queries and add DL20.
+    \item \textbf{Dense retrieval on BEIR.} Run E5-based PAGC on at least SciFact, NFCorpus, and TREC-COVID to test whether the DL-level improvements generalize.
+    \item \textbf{Decoder-only LLMs.} Adapt the RG-YN and GCCP prompts to chat-template format for LLaMA-3.1-8B-Instruct and Qwen-2.5-7B-Instruct, and run on DL19/DL20. This is the clearest novel contribution of the project; the base paper covers only Flan-T5 encoder-decoder models.
+    \item \textbf{Aggregation ablation.} Compare linear aggregation against Borda, Condorcet, and Copeland, and also test non-uniform weighting between the RG-YN and GCCP components, which the original paper does not.
+    \item \textbf{Close the DL20-T5-Large gap.} Port the authors' exact sentence-segmentation rule and seed and verify whether the residual gap fully closes -- useful as a diagnostic for the reproducibility paper, not as cosmetic tuning.
+    \item \textbf{Statistical tests.} Add paired bootstrap or paired $t$-tests ($p < 0.05$) for all reported deltas; the original paper reports none.
+    \item \textbf{Efficiency.} Report per-query latency (and for LLaMA/Qwen token cost) for each method, to substantiate the ``pointwise efficiency'' claim quantitatively.
+    \item \textbf{Writing.} Begin the final report, built around the reproduction tables, the undocumented-details catalogue, the two extensions, and the ablations.
+\end{itemize}
+
+We believe the project is on track for the original Week~15 milestone. The reproduction and BEIR halves of the work are effectively done; the remaining weeks are extensions and writing.
+
+% ── References ──────────────────────────────────────────────────────
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

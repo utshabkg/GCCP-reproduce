@@ -55,28 +55,64 @@ This project reproduces and extends the GCCP (Global-Consistent Comparative Poin
 - [x] Reproduce Table 1 results (pointwise methods)
 - [x] Run with Flan-T5-Large, T5-XL, UL2
 
-### Phase 5: Model Generalization (Weeks 5-6) 🔄 DELEGATED TO COLLABORATORS
-- [ ] Adapt prompts for decoder-only models
-- [ ] Run experiments with LLaMA-3.1-8B-Instruct
-- [ ] Run experiments with Qwen-2.5-7B-Instruct
-- [ ] Run experiments with Phi-3-mini (3.8B)
+### Phase 5: Model Generalization (Weeks 5-6) ⏳ NOT STARTED (solo, Utshab)
+**History:** Originally delegated to collaborator Tristan Fox in `COLLABORATOR_TASKS.md` (March 30, 2026). Tristan did not start the work; from now on Utshab owns this phase.
+- [ ] Adapt prompts for decoder-only models (chat-template format)
+- [ ] Run experiments with LLaMA-3.1-8B-Instruct on DL19/DL20
+- [ ] Run experiments with Qwen-2.5-7B-Instruct on DL19/DL20
+- [ ] (Stretch) Run on 2-3 BEIR datasets (scifact, nfcorpus, trec-covid)
 - [ ] Compare encoder-decoder vs decoder-only performance
 - [ ] Document findings on cross-architecture generalization
 
-### Phase 6: Ablation Studies (Week 6-7) 🔄 DELEGATED TO COLLABORATORS
-- [ ] Anchor construction ablations:
-  - [ ] Random document as anchor
-  - [ ] Top-1 BM25 document as anchor
-  - [ ] LLM-generated synthetic "ideal answer" as anchor
-  - [ ] Our spectral MDS approach
-- [ ] Initial retrieval quality ablations:
-  - [ ] BM25 retrieval (baseline)
-  - [ ] E5-base-v2 dense retrieval (novel extension)
-- [ ] Aggregation method ablations:
-  - [ ] Linear (default)
-  - [ ] Borda, Condorcet, Copeland
-  - [ ] Non-uniform weighting exploration
-- [ ] Parameter sensitivity (m, z, θ values)
+### Phase 6: Ablation Studies (Week 6-7) 🔄 IN PROGRESS
+
+#### 6a. Anchor construction ablations
+**Collaborator contribution — Ethan Garthe**
+(branch `ethan/feature/ablation-studies`, merged in `23a7a68` on 2026-04-16)
+- [x] Implemented 4 anchor builders in `experiments/ablation_studies/ablation_anchor.py`:
+  - random passage, top-1 BM25, top-3 composite (interleaved sentences), spectral MDS (paper default)
+- [x] Preliminary run on **DL19, Flan-T5-Large, 5 queries** (~43 min wall-time)
+- [x] Wired evaluation through `pytrec_eval` per project convention
+- [x] Output: `results/ablations/anchor_methods.json`
+- **Limitation:** only 5 queries → not statistically reliable
+- **Remaining (solo, Utshab):**
+  - [ ] Rerun on full DL19 (43q) + DL20 (54q)
+  - [ ] (Optional) Add LLM-generated synthetic "ideal answer" as 5th anchor
+  - [ ] Add paired-bootstrap significance vs spectral MDS
+
+#### 6b. Initial retrieval quality ablations
+**Collaborator contribution — Christopher Elam**
+(branch `christopher/feature/dense-retrieval`, merged in `6141d33` on 2026-04-16)
+- [x] Implemented E5 retriever (`intfloat/e5-base-v2`) with FAISS index over MS MARCO v1 passages
+  - Files: `experiments/dense_retrieval/{e5_retriever,generate_e5_results,run_gccp_with_e5}.py`
+  - Correct E5 prefixes: `query:` for queries, `passage:` for documents; normalized embeddings
+- [x] Generated top-100 E5 results for DL19 (43q) and DL20 (54q): `data/dl1{9,20}_e5_results.json`
+- [x] Ran full RG-YN + GCCP + PAGC pipeline with **Flan-T5-XL** on DL19 (~6 min) and DL20 (~5 min)
+- [x] Output: `results/trec-dl/dl{19,20}/flan-t5-xl_e5/{rg_yn,gccp,pagc}_scores.json` + `metrics.json`
+- **Headline finding:** E5 first-stage = 0.7086 (DL19) / 0.7051 (DL20) NDCG@10 vs BM25 = 0.5058 / 0.4796. PAGC+E5 (0.7185 / 0.7177) exceeds the paper's best PAGC+BM25 number on both datasets.
+- **Limitation:** only Flan-T5-XL; only TREC DL (no BEIR)
+- **Remaining (solo, Utshab):**
+  - [ ] Extend E5 to BEIR with T5-XL (≥3 datasets: scifact, nfcorpus, trec-covid)
+  - [ ] (Stretch) Run E5 with Flan-T5-Large and Flan-UL2 on DL19/DL20 for scaling curve
+
+#### 6c. Aggregation method ablations
+**No collaborator contribution.** Owned by Utshab.
+- [x] Linear (default, used throughout reproduction) — baseline already in place
+- [ ] Borda, Condorcet, Copeland (cheap: re-aggregates saved scores, no GPU needed)
+- [ ] Non-uniform weighting (α-sweep in αRG-YN + (1-α)GCCP)
+
+#### 6d. Parameter sensitivity (m, z, θ)
+**Collaborator contribution — Ethan Garthe**
+(same branch as 6a)
+- [x] Implemented parameter sweep harness in `experiments/ablation_studies/ablation_params.py`
+- [x] Preliminary sweep on **DL19, Flan-T5-Large, 5 queries** (~2 hr 13 min wall-time):
+  - m ∈ {5, 10, 15, 20}, z ∈ {5, 10, 15, 20}, θ ∈ {0.1, 0.2, 0.3, 0.4}
+- [x] Output: `results/ablations/param_{m,z,theta}_sensitivity.json`
+- **Findings:** PAGC stable to ±1.5 pts across m and θ; z plateaus at z≥10 due to 512-token encoder limit (truncation effect, useful methodological note)
+- **Limitation:** only 5 queries; z=20 hit the encoder length cap
+- **Remaining (solo, Utshab):**
+  - [ ] Rerun on full DL19 (43q)
+  - [ ] (Optional) Investigate z>10 with raised max_length to disentangle truncation
 
 ### Phase 7: BEIR Benchmark Evaluation (Week 7-8) ✅ COMPLETED
 - [x] Run on 8 BEIR datasets (all 3 model sizes):
@@ -612,13 +648,37 @@ Output Passage A or Passage B:
 
 ---
 
-## Team Responsibilities (TBD)
+## Team Responsibilities (Final, as of 2026-05-01)
 
-- **Member A**: Environment setup, BM25 pipeline, TREC DL baselines
-- **Member B**: GCCP/PAGC core implementation and verification
-- **Member C**: Decoder-only model experiments, prompt adaptation
-- **Member D**: Ablations, BEIR evaluation, figures/tables
-- **All**: Final report and presentation
+- **Utshab Kumar Ghosh (lead, all remaining work):** environment, core implementation (RG-YN, GCCP, PAGC, spectral MDS), TREC DL19/DL20 with all 3 model scales, BEIR with all 3 model scales (8 datasets each), author-code audit, NDCG bug fix, branch reviews and merges, all remaining work below.
+- **Christopher Elam (closed contribution):** E5 dense-retrieval extension on DL19/DL20 with Flan-T5-XL — branch `christopher/feature/dense-retrieval`, merged 2026-04-16. No further work.
+- **Ethan Garthe (closed contribution):** anchor-construction and m/z/θ parameter ablations (preliminary, 5 queries on DL19 with Flan-T5-Large) — branch `ethan/feature/ablation-studies`, merged 2026-04-16. No further work.
+- **Tristan Fox:** assigned decoder-only LLM extension; did not start. Reassigned to Utshab.
+
+---
+
+## Solo Work Plan — Remaining (May 2026)
+
+All items below are owned by **Utshab**. Ordered by cost/value.
+
+### Cheap, no-GPU (do first)
+1. **Aggregation ablation** — Borda / Condorcet / Copeland / α-weighted linear, run on already-saved RG-YN+GCCP scores from `results/`. No new LLM calls. (~1 day)
+2. **Statistical tests** — paired bootstrap (1000 resamples, p<0.05) on all reported deltas. Pure post-processing. (~half day)
+3. **Code/repo cleanup** — remove `scripts/full_dl19_fixed.py` and `scripts/test_fixed_impl.py`; add reproducibility README + datasheet. (~half day)
+
+### Medium-cost (single GPU, hours)
+4. **Full-size anchor + parameter ablations** — rerun Ethan's `run_all_ablations.py` with `--num_queries` removed on DL19 (43q) and DL20 (54q), Flan-T5-Large. (~6–8 hr each)
+5. **DL20 T5-Large gap closure** — port author's NLTK-based hybrid sentence segmentation, rerun T5-Large on DL20, verify gap closes from 5.7%. Diagnostic, not tuning. (~4 hr)
+6. **E5 on BEIR** — extend Christopher's pipeline to ≥3 BEIR datasets (scifact, nfcorpus, trec-covid) with Flan-T5-XL. (~6 hr)
+7. **Efficiency analysis** — instrument `run_experiment.py` for per-query latency, run subset across all 3 models, build trade-off plot. (~half day)
+
+### Expensive (the headline novel extension)
+8. **Decoder-only LLMs** — adapt prompts for chat-template format (LLaMA-3.1-8B-Instruct, Qwen-2.5-7B-Instruct), run RG-YN + GCCP + PAGC on DL19/DL20. (~2–3 days incl. debug)
+9. (Stretch) Decoder-only on 2–3 BEIR datasets.
+
+### Writing (final 2 weeks)
+10. **Full reproducibility paper** — currently only progress report exists; lift tables and findings into a 6–8 page draft.
+11. **Reproducibility checklist** — full hyperparameter table, hardware spec, runtime table, dataset access notes.
 
 ---
 

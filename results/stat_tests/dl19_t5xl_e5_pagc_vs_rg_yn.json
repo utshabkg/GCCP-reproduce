@@ -1,0 +1,20 @@
+{
+  "label": "DL19 / Flan-T5-XL / E5: PAGC vs RG-YN",
+  "metric": "ndcg_cut_10",
+  "baseline_scores": "results/trec-dl/dl19/flan-t5-xl_e5/rg_yn_scores.json",
+  "system_scores": "results/trec-dl/dl19/flan-t5-xl_e5/pagc_scores.json",
+  "qrels": "data/dl19_qrels.json",
+  "n_queries": 43,
+  "baseline_mean": 0.6751925786455399,
+  "system_mean": 0.7184891795004005,
+  "delta_mean": 0.04329660085486056,
+  "p_value_two_sided": 0.004,
+  "ci_95_lo": 0.014655176261225202,
+  "ci_95_hi": 0.07217694334100971,
+  "n_better": 27,
+  "n_worse": 12,
+  "n_tied": 4,
+  "resamples": 1000,
+  "seed": 929,
+  "significance": "**"
+}
