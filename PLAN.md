@@ -96,10 +96,19 @@ This project reproduces and extends the GCCP (Global-Consistent Comparative Poin
   - [ ] (Stretch) Run E5 with Flan-T5-Large and Flan-UL2 on DL19/DL20 for scaling curve
 
 #### 6c. Aggregation method ablations
-**No collaborator contribution.** Owned by Utshab.
+**Solo contribution — Utshab Kumar Ghosh** (branch `main`, 2026-05-01)
 - [x] Linear (default, used throughout reproduction) — baseline already in place
-- [ ] Borda, Condorcet, Copeland (cheap: re-aggregates saved scores, no GPU needed)
-- [ ] Non-uniform weighting (α-sweep in αRG-YN + (1-α)GCCP)
+- [x] Implemented runner `experiments/aggregation_ablation/aggregate.py` that reads any pre-saved RG-YN + GCCP per-query score files and applies: paper-default linear (α=0.5), α-weighted linear sweep (α ∈ {0.0, 0.25, 0.5, 0.75, 1.0}), Borda, Condorcet, Copeland; evaluates each with `pytrec_eval` (NDCG@10, P@10, R@10).
+- [x] Ran on **DL19/DL20 with Flan-T5-XL + E5** (using Christopher's saved scores).
+  - Output: `results/ablations/aggregation_dl19_t5xl_e5.json`, `aggregation_dl20_t5xl_e5.json`
+  - Logs: `logs/aggregation_dl{19,20}_t5xl_e5.log`
+- [x] Queued BM25 score-saving rerun for **DL19/DL20 with Flan-T5-Large** in byobu session `gccp` (`experiments/aggregation_ablation/run_bm25_t5large_dl.sh`); aggregation ablation runs automatically after, output to `results/ablations/aggregation_dl{19,20}_t5large_bm25.json`. *(in progress as of 2026-05-01 12:57)*
+- **Headline findings (E5 setup so far):**
+  - α=0.25 (more weight on GCCP) beats paper's α=0.5 default by **+0.8 pts NDCG@10 on DL19** (0.7267 vs 0.7185) and +0.2 pts on DL20.
+  - Borda / Condorcet / Copeland are numerically identical with only 2 voters — useful methodological note for the paper (rank aggregation methods don't differentiate at |R|=2).
+- **Remaining:**
+  - [ ] Rerun on BM25 setup (waiting for in-progress byobu run)
+  - [ ] Extend α-sweep to a finer grid (e.g., α ∈ {0.1..0.9 step 0.1}) once BM25 scores are available
 
 #### 6d. Parameter sensitivity (m, z, θ)
 **Collaborator contribution — Ethan Garthe**
@@ -679,6 +688,36 @@ All items below are owned by **Utshab**. Ordered by cost/value.
 ### Writing (final 2 weeks)
 10. **Full reproducibility paper** — currently only progress report exists; lift tables and findings into a 6–8 page draft.
 11. **Reproducibility checklist** — full hyperparameter table, hardware spec, runtime table, dataset access notes.
+
+---
+
+## Solo Contributions Log (May 2026)
+
+Tracks **Utshab Kumar Ghosh's** post-collaborator-merge contributions, with the same level of attribution detail used for collaborator entries above. Newest first.
+
+### 2026-05-01 — Aggregation ablation framework + initial results
+- New module `experiments/aggregation_ablation/aggregate.py` (script-style runner over saved per-query scores; α-sweep + Borda + Condorcet + Copeland; pytrec_eval).
+- New runner `experiments/aggregation_ablation/run_bm25_t5large_dl.sh` (byobu-friendly wrapper that re-runs DL19/DL20 with T5-Large + pyserini BM25 to save scores, then runs the aggregation ablation).
+- Initial results on **E5/T5-XL DL19+DL20**: `results/ablations/aggregation_dl{19,20}_t5xl_e5.json`.
+- Score-saving rerun on **BM25/T5-Large DL19+DL20** (byobu session `gccp`, ~14 min): scores under `results/trec-dl/dl{19,20}/flan-t5-large_bm25/`, aggregation results in `results/ablations/aggregation_dl{19,20}_t5large_bm25.json`.
+- **Headline findings:**
+  - On **BM25/T5-Large DL19**, Borda/Condorcet/Copeland reach **0.6966 NDCG@10**, beating paper's α=0.5 linear (0.6852) by **+1.1 pts**.
+  - On **E5/T5-XL DL19**, α=0.25 (more weight on GCCP) beats paper's α=0.5 by **+0.8 pts** (0.7267 vs 0.7185).
+  - Direction of optimal α is **inverted between BM25 and E5**: under weak first-stage (BM25) the pointwise RG-YN signal dominates so α≥0.5; under strong first-stage (E5) the contrastive GCCP signal dominates so α≤0.5.
+  - Borda/Condorcet/Copeland numerically identical with |R|=2 voters — methodological note for the paper.
+
+### 2026-05-01 — Paired-bootstrap significance tests
+- New module `experiments/statistical_tests/paired_bootstrap.py` (single comparison) and `run_all_stat_tests.py` (auto-discovers any `results/.../{rg_yn,gccp}_scores.json` directory and runs the standard battery: PAGC vs RG-YN, PAGC vs GCCP, GCCP vs RG-YN, with 1000 resamples and 95% CI).
+- Output: `results/stat_tests/all_paired_bootstrap.json` (covers DL19/DL20 × {BM25/T5-Large, E5/T5-XL}).
+- **Headline findings (paper-worthy, the original work reports no significance tests):**
+  - **PAGC vs GCCP is the only universally-significant comparison** (p<0.001 on both BM25 setups, both directions; ns on E5). The aggregation step is what drives the gain — not GCCP itself.
+  - **GCCP-alone vs RG-YN is NEVER significant** at p<0.05 across all four (dataset × retrieval) combinations tested, and on DL19/BM25 GCCP is actually **worse** than RG-YN (Δ=−0.0293, p=0.156).
+  - PAGC vs RG-YN: significant on E5 DL19 (p=0.004), DL20 BM25 (p=0.020), DL20 E5 (p=0.044); **not** significant on DL19 BM25 (p=0.136).
+- Will run again on every new score set we generate (BEIR-E5, full ablation, decoder-only, etc.).
+
+### 2026-05-01 — Code/repo cleanup
+- Removed two empty debug scripts (`scripts/full_dl19_fixed.py`, `scripts/test_fixed_impl.py`) that had been left untracked in the repo root.
+- Logs in `logs/` are kept as audit trail (37 MB, manageable).
 
 ---
 
