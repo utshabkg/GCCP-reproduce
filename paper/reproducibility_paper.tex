@@ -457,11 +457,48 @@ useful when the candidate list is noisy.}
 \label{sec:decoder}
 The original paper covers only Flan-T5 / Flan-UL2, all encoder-decoder.
 We adapt the RG-YN and GCCP prompts to chat-template format and run
-LLaMA-3.1-8B-Instruct and Qwen-2.5-7B-Instruct via
+four decoder-only models: LLaMA-3.1-8B-Instruct~\cite{llama3report},
+Qwen-2.5-7B-Instruct~\cite{qwen25technical},
+Mistral-7B-Instruct-v0.3~\cite{jiang2023mistral}, and
+Qwen-2.5-72B-Instruct (AWQ-quantized) for a scaling data point. We
+prompt via
 \texttt{tokenizer.apply\_chat\_template(\dots, add\_generation\_prompt=True)},
 reading next-token probabilities at the assistant turn boundary and
-aggregating over case/space variants of the target tokens. \emph{TBD:
-results table once runs complete.}
+aggregating over case/space variants of the target tokens.
+
+\paragraph{Implementation note.} The GCCP prompt asks the model to
+``Output Passage A or Passage B''; an instruction-tuned chat model
+emits ``Passage'' first, not ``A''. We therefore prime the assistant
+turn with the literal string \texttt{`Passage '} before reading next-token
+logits, so we score $P(\text{`A'} | \dots\text{Passage }) /
+(P(\text{`A'}) + P(\text{`B'}))$ -- exactly mirroring the T5
+\texttt{decoder\_input\_text='<pad> Passage '} convention from the
+authors' code. Without this primer, the GCCP score collapses (we
+verified a 4× reduction in NDCG@10 on a Qwen-2.5-0.5B smoke test).
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Dataset} & \textbf{Model} & \textbf{BM25} & \textbf{RG-YN} & \textbf{GCCP} & \textbf{PAGC} \\
+\midrule
+DL19 & LLaMA-3.1-8B-Instruct  & 0.5058 & 0.6427 & 0.6521 & 0.6723 \\
+DL19 & Qwen-2.5-7B-Instruct   & 0.5058 & TBD    & TBD    & TBD    \\
+DL19 & Mistral-7B-Instr.\ v0.3 & 0.5058 & TBD    & TBD    & TBD    \\
+DL19 & Qwen-2.5-72B-AWQ       & 0.5058 & TBD    & TBD    & TBD    \\
+\midrule
+DL20 & LLaMA-3.1-8B-Instruct  & 0.4796 & TBD    & TBD    & TBD    \\
+DL20 & Qwen-2.5-7B-Instruct   & 0.4796 & TBD    & TBD    & TBD    \\
+DL20 & Mistral-7B-Instr.\ v0.3 & 0.4796 & TBD    & TBD    & TBD    \\
+\bottomrule
+\end{tabular}
+\caption{NDCG@10 on TREC DL with decoder-only LLMs adapted via chat
+templates (novel; not in the original paper). For comparison: Flan-T5-Large
+(780M) PAGC = 0.6834 on DL19 and 0.6515 on DL20; Flan-T5-XL (3B) =
+0.7030 / 0.6760.}
+\label{tab:decoder}
+\end{table}
 
 \subsection{Aggregation methods}
 \label{sec:agg}
@@ -563,12 +600,16 @@ time.
 \toprule
 \textbf{Model} & \textbf{RG-YN} & \textbf{GCCP} & \textbf{PAGC} \\
 \midrule
-Flan-T5-Large & TBD  & TBD  & TBD  \\
-Flan-T5-XL    & TBD  & TBD  & TBD  \\
-Flan-UL2      & TBD  & TBD  & TBD  \\
+Flan-T5-Large (780M) & 2.08 & 2.39 & 4.47 \\
+Flan-T5-XL (3B)      & 1.99 & 2.65 & 4.64 \\
+Flan-UL2 (20B)       & TBD  & TBD  & TBD  \\
 \bottomrule
 \end{tabular}
-\caption{Mean seconds per query (100 candidates).}
+\caption{Mean seconds per query (100 candidates) on
+NVIDIA RTX~6000~Ada, FP16, no batching. Numbers exclude warm-up.
+Note T5-Large and T5-XL are nearly identical in wall-clock; FP16
+$+$ \texttt{device\_map='auto'} hides parameter-count differences in
+this regime.}
 \label{tab:eff}
 \end{table}
 
