@@ -761,6 +761,21 @@ Tracks **Utshab Kumar Ghosh's** post-collaborator-merge contributions, with the 
 - New `paper/reproducibility_paper.tex` (ACM SIGIR `sigconf` style, ~10 pages compiled): Introduction, Background, Reproduction Methodology, Reproduction Results, Undocumented Implementation Details (7 items), Statistical Significance, Beyond the Paper (E5 + decoder-only + aggregation + ablations), Efficiency, Discussion, Conclusion.
 - TBD: efficiency table + decoder-only table (filled in once runs complete).
 
+### 2026-05-01 — Decoder-only LLM full runs (4 backbones, 12 score files)
+- Created separate conda env `gccp-decoder` (transformers 4.49 + sentence-transformers + faiss + ir_datasets) so the Flan T5 pipeline (transformers 4.36) is unaffected.
+- Ran 7B trio on DL19 + DL20 with local model snapshots from `/media/20TB/shared/models/`:
+  - **LLaMA-3.1-8B-Instruct**: PAGC = 0.6723 / 0.6166 (DL19/DL20)
+  - **Qwen-2.5-7B-Instruct**: PAGC = **0.7212** / **0.6641** -- DL19 PAGC beats Flan-T5-XL (0.7030)!
+  - **Mistral-7B-Instruct-v0.3**: PAGC = 0.6429 / 0.5983 (below T5-Large)
+- Output: `results/trec-dl/dl{19,20}/{llama3.1-8b,qwen2.5-7b,mistral-7b-v0.3}_bm25/{rg_yn,gccp,pagc}_scores.json` + `metrics.json`. Total 12 new score files.
+- **Headline finding:** at fixed 7--8B scale, the variance \emph{across model families} is larger than the variance across Flan-T5 model sizes. Backbone family matters more than parameter count for GCCP/PAGC.
+- **Stretch (failed):** attempted Qwen-2.5-72B-Instruct-AWQ as a scaling data point. autoawq 0.2.7+ requires torch>=2.5.1; installing it forced a torch upgrade to 2.11.0+cu130 (with broken CUDA), so we backed it out and dropped the 72B point.
+
+### 2026-05-01 — Stat tests expanded to 12 (dataset × retrieval × model) settings
+- Reran `experiments/statistical_tests/run_all_stat_tests.py` after the decoder + author-MDS + BEIR-E5 score files landed.
+- Coverage now: DL19 × {T5-Large/BM25, T5-XL/E5, LLaMA-3.1/BM25, Qwen-2.5/BM25, Mistral-7B/BM25} + DL20 × {same 5} + DL20/T5-Large/BM25/authorMDS + BEIR-SciFact/T5-XL/E5 = 12 setups.
+- **Headline finding:** GCCP-alone vs RG-YN is significant at p<0.05 in only **2/12** setups (BEIR-SciFact/T5-XL/E5 with 300 queries giving statistical power, and DL19/Qwen-2.5-7B/BM25); not significant in 10/12, including 3 settings where GCCP is directionally worse than RG-YN. PAGC vs GCCP is significant in **9/12**.
+
 ### 2026-05-01 — E5 dense retrieval extended to BEIR
 - New module `experiments/beir_e5/{generate_beir_e5.py, rerank_beir_e5.py, run_all_beir_e5.sh}`. Two-stage pipeline:
   - **Stage 1 (gccp-decoder env):** load BEIR test split via `ir_datasets`; encode corpus + queries with `intfloat/e5-base-v2` (E5 prefixes `passage:` / `query:`); FAISS IndexFlatIP top-100; save `data/beir_e5_<dataset>.json` in the same shape as Christopher's TREC-DL E5 results.
