@@ -715,6 +715,52 @@ Tracks **Utshab Kumar Ghosh's** post-collaborator-merge contributions, with the 
   - PAGC vs RG-YN: significant on E5 DL19 (p=0.004), DL20 BM25 (p=0.020), DL20 E5 (p=0.044); **not** significant on DL19 BM25 (p=0.136).
 - Will run again on every new score set we generate (BEIR-E5, full ablation, decoder-only, etc.).
 
+### 2026-05-01 — Full-size anchor + parameter ablations (replaces Ethan's 5-query preliminary)
+- New runner `experiments/ablation_studies/run_full_ablations.sh`; small enabling patches to `ablation_anchor.py`, `ablation_params.py`, `run_all_ablations.py` to allow `--dataset dl20`.
+- Ran on **DL19 (43q) + DL20 (54q) with Flan-T5-Large** in byobu (~1h 25min total).
+- Output: `results/ablations/full_dl{19,20}_t5large/{anchor_methods, param_{m,z,theta}_sensitivity, ablation_summary}.json`.
+- **Headline finding (paper-worthy):** the paper's spectral MDS anchor is **NOT optimal** on the standard BM25 setup. Simple alternatives outperform:
+
+| DL19 / T5-Large | RG-YN  | GCCP   | PAGC   |
+|---|---|---|---|
+| spectral_mds (paper) | 0.6634 | 0.6341 | 0.6852 |
+| top1_bm25            | 0.6634 | **0.6511** | **0.6948** |
+| top3_composite       | 0.6634 | 0.6410 | 0.6947 |
+| random_document      | 0.6634 | 0.6394 | 0.6945 |
+
+| DL20 / T5-Large | RG-YN  | GCCP   | PAGC   |
+|---|---|---|---|
+| spectral_mds (paper) | 0.6121 | 0.6137 | 0.6507 |
+| top3_composite       | 0.6121 | **0.6280** | **0.6572** |
+| top1_bm25            | 0.6121 | 0.6131 | 0.6485 |
+| random_document      | 0.6121 | 0.6103 | 0.6474 |
+
+- This contradicts the paper's design choice: the costly spectral MDS step adds no measurable value over a 1-line top-1 BM25 anchor on DL19, and on DL20 a top-3 sentence-interleaved composite is best.
+- Paper still claims spectral MDS is best (Table 5) — possibly a small-sample artifact in their evaluation, or the difference is from undocumented data preprocessing we have not been able to reproduce.
+
+### 2026-05-01 — DL20 T5-Large gap closure attempt (NLTK + 200/128 hybrid)
+- New module `experiments/dl20_gap_closure/author_exact_mds.py`: faithful port of `author_code/src/modules/MultiDocSummarizer.py` (NLTK sentence tokenization, 200-char-or-first-128 hybrid per-doc length cap, abs-Fiedler minority-side selection).
+- Runner: `experiments/dl20_gap_closure/run_dl20_author_exact.py`. Run on DL20 with Flan-T5-Large + pyserini BM25, ~4 min.
+- Output: `results/trec-dl/dl20/flan-t5-large_bm25_authorMDS/`.
+- **Result:** GCCP 0.6137 → 0.6254 (+1.2 pts), PAGC 0.6507 → 0.6561 (+0.6 pts). Residual gap to paper PAGC (0.6910) is ~5%, down from ~5.7% — segmentation accounts for ~12-15% of the original gap; ~85% remains **unattributed** despite a faithful port. Honest finding for the paper: even with full code in hand, small-model reproduction is brittle.
+
+### 2026-05-01 — Decoder-only LLM ranker (novel extension)
+- New module `experiments/decoder_only_models/decoder_rankers.py`: `DecoderOnlyRGYNRanker` and `DecoderOnlyGCCPRanker` for chat-template models. Uses `tokenizer.apply_chat_template(..., add_generation_prompt=True)` to put the model in "ready-to-respond" state and reads next-token logits.
+- **Critical implementation note (matches T5 convention):** GCCP ranker primes the assistant response with `'Passage '` so we score `P(A | … Passage )` vs `P(B | … Passage )` rather than P(A) at the bare assistant turn — without this the model emits `' Passage'` first and our A/B mass is dominated by random tokens. Smoke test on Qwen-2.5-0.5B improved GCCP NDCG@10 from 0.0844 to 0.3069 on 5 queries by adding this prefix.
+- Aggregates probability mass across case/space variants (`yes`, `' yes'`, `Yes`, `YES`, ...; same for A/B) — robust to tokenizer quirks across model families.
+- New runner `experiments/decoder_only_models/run_decoder.py` and shell wrapper `run_all_decoder.sh`.
+- Created separate conda env `gccp-decoder` (python 3.10, torch 2.4, **transformers 4.49**) because the gccp-reproduce env is pinned to transformers 4.36 and lacks the Qwen2/LLaMA-3.1 tokenizer classes.
+- Models attempted: LLaMA-3.1-8B-Instruct (gated, requires HF auth — currently blocked), Qwen-2.5-7B-Instruct (open, running), Mistral-7B-Instruct-v0.3 (open, queued as LLaMA fallback).
+
+### 2026-05-01 — Efficiency analysis tooling
+- New module `experiments/efficiency_analysis/measure_latency.py`: warmup-excluded per-query wall-clock latency with cuda synchronization, reports mean/std/total + ms/doc throughput.
+- Wrapper `run_all_efficiency.sh` runs all three encoder-decoder backbones on DL19 (10 timed queries each + 2 warmup).
+- Output: `results/efficiency/dl19_<model>.json`.
+
+### 2026-05-01 — Reproducibility paper draft (full)
+- New `paper/reproducibility_paper.tex` (ACM SIGIR `sigconf` style, ~10 pages compiled): Introduction, Background, Reproduction Methodology, Reproduction Results, Undocumented Implementation Details (7 items), Statistical Significance, Beyond the Paper (E5 + decoder-only + aggregation + ablations), Efficiency, Discussion, Conclusion.
+- TBD: efficiency table + decoder-only table (filled in once runs complete).
+
 ### 2026-05-01 — Code/repo cleanup
 - Removed two empty debug scripts (`scripts/full_dl19_fixed.py`, `scripts/test_fixed_impl.py`) that had been left untracked in the repo root.
 - Logs in `logs/` are kept as audit trail (37 MB, manageable).
