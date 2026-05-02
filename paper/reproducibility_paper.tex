@@ -72,10 +72,10 @@ Condorcet, Copeland) outperforms the paper's linear aggregation by
 $+1.1$~pts on DL19, (ii) replacing BM25 with an off-the-shelf E5
 dense retriever lifts PAGC by $+1.5$ to $+4.2$~pts and exceeds the
 paper's best published number on both DL19 and DL20 with Flan-T5-XL,
-(iii) under a paired-bootstrap test (1000 resamples) across 12
+(iii) under a paired-bootstrap test (1000 resamples) across 13
 (dataset $\times$ retrieval $\times$ model) settings, GCCP alone
-is significantly different from RG-YN at $p<0.05$ in only 2/12
-settings; PAGC vs GCCP is significant in 9/12 -- the
+is significantly different from RG-YN at $p<0.05$ in only 3/13
+settings; PAGC vs GCCP is significant in 9/13 -- the
 statistical signal is in the aggregation step, not in GCCP itself, and
 (iv) a one-line ``top-1 BM25 passage'' anchor outperforms the paper's
 spectral multi-document summarization anchor on full DL19 by
@@ -407,17 +407,18 @@ at $p<0.05$; *: $p<0.05$; **: $p<0.01$; ***: $p<0.001$.}
 \label{tab:stats}
 \end{table}
 
-\paragraph{Findings (across all 12 settings tested).}
-(i) \textbf{GCCP alone vs RG-YN: significant at $p<0.05$ in only 2/12
-settings} -- BEIR-SciFact with Flan-T5-XL+E5 ($\Delta{=}{+}0.045$,
-$p{=}0.008$, with 300 queries giving statistical power) and DL19 with
-Qwen-2.5-7B+BM25 ($\Delta{=}{+}0.051$, $p{=}0.012$). In the remaining
-10 settings GCCP alone does not significantly differ from RG-YN, and
-in 3 of those 10 it is directionally \emph{worse} (Flan-T5-Large/BM25
-on DL19; Mistral-7B-Instruct on DL19 and DL20). (ii)
-\textbf{PAGC vs GCCP: significant in 9/12 settings, including all six
-DL20 BM25 settings at $p<0.05$.} (iii) PAGC vs RG-YN is significant
-in 6/12 settings.
+\paragraph{Findings (across all 13 settings tested).}
+(i) \textbf{GCCP alone vs RG-YN: significant at $p<0.05$ in only 3/13
+settings} -- BEIR-SciFact ($\Delta{=}{+}0.045$, $p{=}0.008$, $n{=}300$),
+BEIR-NFCorpus ($\Delta{=}{+}0.012$, $p{=}0.032$, $n{=}323$), and DL19
+with Qwen-2.5-7B+BM25 ($\Delta{=}{+}0.051$, $p{=}0.012$). The
+significant cases are precisely the high-$n$ BEIR settings and an
+unusually clean Qwen-2.5-7B chat backbone; in the remaining 10
+settings GCCP alone does not significantly differ from RG-YN, and in
+3 of those 10 it is directionally \emph{worse}. (ii) \textbf{PAGC vs
+GCCP: significant in 9/13 settings, including all six DL20 BM25
+settings at $p<0.05$.} (iii) PAGC vs RG-YN is significant in 7/13
+settings (the BEIR ones included).
 
 The implication is consistent across decoder backbones, model scales,
 and first-stage retrievers: GCCP's contribution is not a strong
@@ -457,7 +458,7 @@ DL19         & 0.5058 & 0.7086 & 0.6844 & \textbf{0.7090} & 0.7030 & \textbf{0.7
 DL20         & 0.4796 & 0.7051 & 0.6668 & \textbf{0.7069} & 0.6760 & \textbf{0.7177} \\
 \multicolumn{7}{l}{\emph{BEIR}} \\
 SciFact      & 0.6789 & 0.7274 & 0.6720 & \textbf{0.7026} & 0.6840 & \textbf{0.7176} \\
-NFCorpus     & 0.3387 & TBD    & 0.3666 & TBD             & 0.3728 & TBD             \\
+NFCorpus     & 0.3387 & 0.3517 & 0.3666 & \textbf{0.3836} & 0.3728 & \textbf{0.3884} \\
 \bottomrule
 \end{tabular}
 \caption{NDCG@10 with Flan-T5-XL, BM25 vs.\ E5-base-v2 first-stage.}
@@ -735,11 +736,12 @@ practical importance:
           a paper-only reimplementation works at all; one of them
           (target-token case) drops NDCG@10 from 0.66 to 0.24 in
           isolation.
-    \item Across 12 (dataset $\times$ retrieval $\times$ model)
+    \item Across 13 (dataset $\times$ retrieval $\times$ model)
           settings, GCCP \emph{alone} is significantly distinguishable
-          from RG-YN at $p<0.05$ in only 2/12; PAGC vs GCCP is
-          significant in 9/12. The paper's value lives in the
-          aggregation step, not in GCCP itself.
+          from RG-YN at $p<0.05$ in only 3/13 (the two
+          BEIR sets with hundreds of queries plus DL19/Qwen-2.5-7B);
+          PAGC vs GCCP is significant in 9/13. The paper's value
+          lives in the aggregation step, not in GCCP itself.
     \item A one-line ``top-1 BM25 passage'' anchor outperforms the
           paper's spectral multi-document summarization on full
           DL19/DL20 with Flan-T5-Large; spectral MDS is

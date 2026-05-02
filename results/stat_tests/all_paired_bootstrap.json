@@ -1,4 +1,45 @@
 {
+  "beir/nfcorpus/flan-t5-xl_e5": {
+    "n_queries": 323,
+    "comparisons": {
+      "PAGC vs RG-YN": {
+        "baseline_mean": 0.371162666585992,
+        "system_mean": 0.38839617873269316,
+        "delta_mean": 0.017233512146701213,
+        "p_value": 0.0,
+        "ci_95_lo": 0.00947438171694163,
+        "ci_95_hi": 0.0251949403090322,
+        "n_better": 112,
+        "n_worse": 64,
+        "n_tied": 147,
+        "significance": "***"
+      },
+      "PAGC vs GCCP": {
+        "baseline_mean": 0.38359896476277366,
+        "system_mean": 0.38839617873269316,
+        "delta_mean": 0.004797213969919542,
+        "p_value": 0.222,
+        "ci_95_lo": -0.0028568559285140393,
+        "ci_95_hi": 0.012468728068140186,
+        "n_better": 86,
+        "n_worse": 79,
+        "n_tied": 158,
+        "significance": "ns"
+      },
+      "GCCP vs RG-YN": {
+        "baseline_mean": 0.371162666585992,
+        "system_mean": 0.38359896476277366,
+        "delta_mean": 0.01243629817678167,
+        "p_value": 0.032,
+        "ci_95_lo": 0.0008824399699758474,
+        "ci_95_hi": 0.023683986667214618,
+        "n_better": 117,
+        "n_worse": 88,
+        "n_tied": 118,
+        "significance": "*"
+      }
+    }
+  },
   "beir/scifact/flan-t5-xl_e5": {
     "n_queries": 300,
     "comparisons": {
