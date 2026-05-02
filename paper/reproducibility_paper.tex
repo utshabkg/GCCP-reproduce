@@ -655,10 +655,45 @@ a dense retriever'' should pick the latter.
 % ============================================================
 
 We reproduced GCCP and PAGC end-to-end, audited the implementation
-against the paper, contributed a catalogue of seven undocumented
-details that silently determine reproduction success, and ran two
-extensions and three ablations not in the original paper. Code,
-per-query scores, run logs, and statistical tests are released at
+against the paper, and ran several extensions and ablations the
+original paper does not contain. Our findings, in order of
+practical importance:
+
+\begin{enumerate}[leftmargin=1.5em,nosep]
+    \item The method's headline claim reproduces within 2--4\% NDCG@10
+          on average across $\sim 50$ (dataset $\times$ model)
+          configurations.
+    \item Seven undocumented implementation details determine whether
+          a paper-only reimplementation works at all; one of them
+          (target-token case) drops NDCG@10 from 0.66 to 0.24 in
+          isolation.
+    \item GCCP \emph{alone} is not statistically distinguishable from
+          RG-YN at $p<0.05$ in any of four (dataset $\times$ retrieval)
+          settings we tested. PAGC's gain over GCCP \emph{is} highly
+          significant in 2/4. The paper's value lives in the
+          aggregation step, not in GCCP itself.
+    \item A one-line ``top-1 BM25 passage'' anchor outperforms the
+          paper's spectral multi-document summarization on full
+          DL19/DL20 with Flan-T5-Large; spectral MDS is
+          \emph{not} the strongest anchor in our reproduction.
+    \item Replacing BM25 with E5 dense retrieval lifts the entire
+          pipeline by 2--4~pts NDCG@10 on TREC-DL and already
+          exceeds the paper's published Flan-T5-XL PAGC numbers
+          before any reranking. The contrastive anchor contributes
+          less when the candidate list is already clean.
+    \item Decoder-only LLMs (LLaMA-3.1-8B, Qwen-2.5-7B,
+          Mistral-7B-Instruct, Qwen-2.5-72B-AWQ) work with our
+          chat-template adaptation. At 7--8B parameters they are
+          competitive with -- but do not exceed -- Flan-T5-Large
+          (780M), suggesting Flan's instruction tuning matters more
+          than scale at this regime.
+    \item NDCG@10 implementations are not interchangeable; using
+          a hand-written routine instead of \texttt{pytrec\_eval}
+          accounts for $\sim 2.5$~pts of our largest BEIR gap.
+\end{enumerate}
+
+Code, per-query scores, run logs, statistical tests, and the
+reproducibility checklist are released at
 \url{https://github.com/utshabkg/GCCP-reproduce}.
 
 % ============================================================
