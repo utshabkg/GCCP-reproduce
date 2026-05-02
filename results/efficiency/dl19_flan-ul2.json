@@ -1,0 +1,15 @@
+{
+  "experiment": {
+    "dataset": "dl19",
+    "model": "google/flan-ul2",
+    "short_name": "flan-ul2",
+    "num_queries": 0,
+    "warmup_queries": 0,
+    "docs_per_query": 100,
+    "max_doc_length": 128,
+    "device": "cuda",
+    "skipped": true,
+    "skip_reason": "Concurrent decoder-only and efficiency runs caused CPU offload of UL2 weights ('Some parameters are on the meta device device because they were offloaded to the cpu'). The resulting wall-clock would not be a meaningful per-query latency for UL2 on a clean GPU. The full UL2 inference numbers from our DL19/DL20 BEIR runs (~70-90 min for 43-54 queries, sequential, no batching, on a single 48 GB GPU with no concurrent process) imply roughly ~25 sec/q for the full pipeline, but this estimate is from end-to-end runs rather than the controlled latency harness used here."
+  },
+  "methods": {}
+}

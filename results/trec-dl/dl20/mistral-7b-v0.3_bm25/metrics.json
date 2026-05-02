@@ -1,0 +1,33 @@
+{
+  "experiment": {
+    "dataset": "dl20",
+    "model": "/media/20TB/shared/models/mistralai/Mistral-7B-Instruct-v0.3/models--mistralai--Mistral-7B-Instruct-v0.3/snapshots/c170c708c41dac9275d15a8fff4eca08d52bab71",
+    "short_name": "mistral-7b-v0.3",
+    "num_queries": 54,
+    "elapsed": "0:07:40.454386",
+    "timestamp": "2026-05-01T22:02:44.188958",
+    "max_doc_length": 128
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.4796366724252675,
+      "p@10": 0.538888888888889,
+      "recall@10": 0.16435973219067665
+    },
+    "rg_yn": {
+      "ndcg@10": 0.5359555616954688,
+      "p@10": 0.637037037037037,
+      "recall@10": 0.19246573766191777
+    },
+    "gccp": {
+      "ndcg@10": 0.5104535019601526,
+      "p@10": 0.5796296296296296,
+      "recall@10": 0.18434746941566266
+    },
+    "pagc": {
+      "ndcg@10": 0.5983037023346058,
+      "p@10": 0.6592592592592591,
+      "recall@10": 0.20895216318523716
+    }
+  }
+}

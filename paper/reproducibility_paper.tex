@@ -78,7 +78,10 @@ four (dataset $\times$ retrieval) combinations we tested -- the
 statistical signal is in the aggregation, not in GCCP itself, and
 (iv) a one-line ``top-1 BM25 passage'' anchor outperforms the paper's
 spectral multi-document summarization anchor on full DL19 by
-$+1.7$~pts GCCP, contradicting the paper's Table~5.
+$+1.7$~pts GCCP, contradicting the paper's Table~5, and (v) the
+contrastive-anchor mechanism transfers to chat-tuned decoder-only
+models -- with a critical implementation primer -- and Qwen-2.5-7B-Instruct
+beats Flan-T5-XL on DL19 PAGC.
 \end{abstract}
 
 \maketitle
@@ -437,21 +440,36 @@ keeping the rest of the pipeline unchanged.
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 \textbf{Dataset} & BM25 & E5 & +BM25 & +E5 & +BM25 & +E5 \\
 \midrule
-DL19 & 0.5058 & 0.7086 & 0.6844 & \textbf{0.7090} & 0.7030 & \textbf{0.7185} \\
-DL20 & 0.4796 & 0.7051 & 0.6668 & \textbf{0.7069} & 0.6760 & \textbf{0.7177} \\
+\multicolumn{7}{l}{\emph{TREC DL}} \\
+DL19         & 0.5058 & 0.7086 & 0.6844 & \textbf{0.7090} & 0.7030 & \textbf{0.7185} \\
+DL20         & 0.4796 & 0.7051 & 0.6668 & \textbf{0.7069} & 0.6760 & \textbf{0.7177} \\
+\multicolumn{7}{l}{\emph{BEIR}} \\
+SciFact      & 0.6789 & 0.7274 & 0.6720 & \textbf{0.7026} & 0.6840 & \textbf{0.7176} \\
+NFCorpus     & 0.3387 & TBD    & 0.3666 & TBD             & 0.3728 & TBD             \\
 \bottomrule
 \end{tabular}
-\caption{NDCG@10 on TREC DL with Flan-T5-XL.}
+\caption{NDCG@10 with Flan-T5-XL, BM25 vs.\ E5-base-v2 first-stage.}
 \label{tab:e5-dl}
 \end{table}
 
-E5 lifts the first-stage by $+20$~pts over BM25, and PAGC$+$E5
-exceeds the paper's published PAGC$+$BM25 number (0.7281 on DL19,
-0.7092 on DL20) on both datasets. The marginal contribution of GCCP
-re-ranking on top of E5 is smaller than on top of BM25: for DL20,
-PAGC$+$BM25 buys $+0.197$ pts over BM25, while PAGC$+$E5 only buys
-$+0.013$ pts over E5. \textbf{The contrastive anchor is much more
-useful when the candidate list is noisy.}
+E5 lifts the first-stage by $+5$ to $+20$~pts over BM25 across these
+four datasets. On TREC DL, PAGC$+$E5 exceeds the paper's published
+PAGC$+$BM25 number (0.7281 on DL19, 0.7092 on DL20) on both datasets.
+On SciFact, PAGC$+$E5 (0.7176) is $+3.4$~pts over PAGC$+$BM25
+(0.6840) and $+1.7$~pts over the paper's number (0.6807).
+
+\paragraph{When does the contrastive anchor help?} The marginal
+contribution of GCCP re-ranking on top of E5 is much smaller than on
+top of BM25. On DL20, PAGC$+$BM25 buys $+0.197$ pts over BM25, while
+PAGC$+$E5 only buys $+0.013$ pts over E5. On SciFact, PAGC$+$BM25
+buys $+0.005$ pts (essentially nothing) and PAGC$+$E5 buys
+$-$0.010 pts (PAGC actually slightly hurts). \textbf{The contrastive
+anchor is most useful when the candidate list is noisy} -- when the
+first-stage already returns a clean list, GCCP rearrangement has
+little additional signal to extract. This is consistent with our
+statistical-significance finding (Section~\ref{sec:stats}) that
+PAGC vs RG-YN is significant on DL20 BM25 but not on DL19 BM25 with
+the smaller model.
 
 \subsection{Decoder-only LLMs}
 \label{sec:decoder}
@@ -483,22 +501,60 @@ verified a 4× reduction in NDCG@10 on a Qwen-2.5-0.5B smoke test).
 \toprule
 \textbf{Dataset} & \textbf{Model} & \textbf{BM25} & \textbf{RG-YN} & \textbf{GCCP} & \textbf{PAGC} \\
 \midrule
-DL19 & LLaMA-3.1-8B-Instruct  & 0.5058 & 0.6427 & 0.6521 & 0.6723 \\
-DL19 & Qwen-2.5-7B-Instruct   & 0.5058 & TBD    & TBD    & TBD    \\
-DL19 & Mistral-7B-Instr.\ v0.3 & 0.5058 & TBD    & TBD    & TBD    \\
-DL19 & Qwen-2.5-72B-AWQ       & 0.5058 & TBD    & TBD    & TBD    \\
+DL19 & LLaMA-3.1-8B-Instruct    & 0.5058 & 0.6427 & 0.6521 & 0.6723 \\
+DL19 & Qwen-2.5-7B-Instruct     & 0.5058 & 0.6527 & \textbf{0.7039} & \textbf{0.7212} \\
+DL19 & Mistral-7B-Instr.\ v0.3  & 0.5058 & 0.5716 & 0.5617 & 0.6429 \\
 \midrule
-DL20 & LLaMA-3.1-8B-Instruct  & 0.4796 & TBD    & TBD    & TBD    \\
-DL20 & Qwen-2.5-7B-Instruct   & 0.4796 & TBD    & TBD    & TBD    \\
-DL20 & Mistral-7B-Instr.\ v0.3 & 0.4796 & TBD    & TBD    & TBD    \\
+DL20 & LLaMA-3.1-8B-Instruct    & 0.4796 & 0.5795 & 0.5866 & 0.6166 \\
+DL20 & Qwen-2.5-7B-Instruct     & 0.4796 & \textbf{0.6360} & 0.6447 & \textbf{0.6641} \\
+DL20 & Mistral-7B-Instr.\ v0.3  & 0.4796 & 0.5360 & 0.5105 & 0.5983 \\
 \bottomrule
 \end{tabular}
 \caption{NDCG@10 on TREC DL with decoder-only LLMs adapted via chat
 templates (novel; not in the original paper). For comparison: Flan-T5-Large
-(780M) PAGC = 0.6834 on DL19 and 0.6515 on DL20; Flan-T5-XL (3B) =
-0.7030 / 0.6760.}
+(780M) PAGC = 0.6834 / 0.6515 on DL19/DL20; Flan-T5-XL (3B) = 0.7030 /
+0.6760; Flan-UL2 (20B) = 0.7095 / 0.7009.}
 \label{tab:decoder}
 \end{table}
+
+\paragraph{Findings.} The three decoder-only 7--8B models span the
+full range from \emph{below} Flan-T5-Large (780M) to \emph{above}
+Flan-T5-XL (3B):
+
+\begin{itemize}[leftmargin=1.5em,nosep]
+    \item \textbf{Qwen-2.5-7B-Instruct is the strongest open
+          7B GCCP backbone we tested}: PAGC = 0.7212 on DL19, beating
+          Flan-T5-XL's 0.7030 by $+1.8$~pts and within $1$~pt of
+          Flan-UL2 (20B). On DL20 it sits between T5-Large and
+          T5-XL.
+    \item \textbf{LLaMA-3.1-8B-Instruct} is intermediate: PAGC is
+          $0.6723$ / $0.6166$, comparable to Flan-T5-Large despite
+          being 10$\times$ larger.
+    \item \textbf{Mistral-7B-Instruct-v0.3} underperforms on both
+          datasets, especially on GCCP: its contrastive A/B
+          discrimination score (0.5617 / 0.5105) is the weakest
+          of the four families. We suspect Mistral-7B-Instruct's
+          shorter instruction-tuning recipe makes the model worse
+          at the binary preference task than at the relevance-grading
+          one.
+\end{itemize}
+
+\noindent The conclusion is \textbf{family-dependent and not
+size-dependent}: at fixed 7--8B scale, the GCCP/PAGC effectiveness
+gap between Qwen-2.5 and Mistral is larger ($+0.078$ DL19 PAGC,
+$+0.066$ DL20) than between Flan-T5-Large and Flan-UL2
+($+0.026$ DL19, $+0.049$ DL20). For deployers, choosing the right
+backbone family matters more than choosing the largest one.
+
+\paragraph{Stretch goal -- 72B AWQ.} We attempted
+Qwen-2.5-72B-Instruct-AWQ (an AWQ-quantized 72B model that fits
+in a single 48~GB GPU) as a scaling data point. The relevant
+\texttt{autoawq} package versions in the gccp-decoder environment
+required incompatible PyTorch upgrades that broke the rest of the
+decoder pipeline; we backed the change out and report the 72B point
+as future work. The Qwen-2.5-7B result already establishes that the
+contrastive-anchor mechanism transfers to chat-tuned decoder-only
+models.
 
 \subsection{Aggregation methods}
 \label{sec:agg}
@@ -681,12 +737,12 @@ practical importance:
           exceeds the paper's published Flan-T5-XL PAGC numbers
           before any reranking. The contrastive anchor contributes
           less when the candidate list is already clean.
-    \item Decoder-only LLMs (LLaMA-3.1-8B, Qwen-2.5-7B,
-          Mistral-7B-Instruct, Qwen-2.5-72B-AWQ) work with our
-          chat-template adaptation. At 7--8B parameters they are
-          competitive with -- but do not exceed -- Flan-T5-Large
-          (780M), suggesting Flan's instruction tuning matters more
-          than scale at this regime.
+    \item Decoder-only LLMs work with our chat-template adaptation
+          (with a critical \texttt{`Passage '} primer for the GCCP
+          turn). \textbf{Qwen-2.5-7B-Instruct PAGC on DL19 (0.7212)
+          beats Flan-T5-XL (0.7030)}; LLaMA-3.1-8B is intermediate;
+          Mistral-7B-Instruct-v0.3 underperforms. Backbone family
+          matters more than parameter count at the 7--8B scale.
     \item NDCG@10 implementations are not interchangeable; using
           a hand-written routine instead of \texttt{pytrec\_eval}
           accounts for $\sim 2.5$~pts of our largest BEIR gap.

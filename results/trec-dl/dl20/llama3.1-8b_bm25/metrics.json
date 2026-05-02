@@ -1,0 +1,33 @@
+{
+  "experiment": {
+    "dataset": "dl20",
+    "model": "/media/20TB/shared/models/meta-llama/Llama-3.1-8B-Instruct/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659",
+    "short_name": "llama3.1-8b",
+    "num_queries": 54,
+    "elapsed": "0:08:31.229984",
+    "timestamp": "2026-05-01T21:29:45.139525",
+    "max_doc_length": 128
+  },
+  "results": {
+    "bm25": {
+      "ndcg@10": 0.4796366724252675,
+      "p@10": 0.538888888888889,
+      "recall@10": 0.16435973219067665
+    },
+    "rg_yn": {
+      "ndcg@10": 0.5795209984130922,
+      "p@10": 0.6351851851851852,
+      "recall@10": 0.19345146481829356
+    },
+    "gccp": {
+      "ndcg@10": 0.5865743719218864,
+      "p@10": 0.6666666666666666,
+      "recall@10": 0.20210600104547247
+    },
+    "pagc": {
+      "ndcg@10": 0.6166399376417863,
+      "p@10": 0.6944444444444443,
+      "recall@10": 0.212287875833785
+    }
+  }
+}
