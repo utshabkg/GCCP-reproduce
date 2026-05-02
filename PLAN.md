@@ -761,6 +761,19 @@ Tracks **Utshab Kumar Ghosh's** post-collaborator-merge contributions, with the 
 - New `paper/reproducibility_paper.tex` (ACM SIGIR `sigconf` style, ~10 pages compiled): Introduction, Background, Reproduction Methodology, Reproduction Results, Undocumented Implementation Details (7 items), Statistical Significance, Beyond the Paper (E5 + decoder-only + aggregation + ablations), Efficiency, Discussion, Conclusion.
 - TBD: efficiency table + decoder-only table (filled in once runs complete).
 
+### 2026-05-01 — E5 dense retrieval extended to BEIR
+- New module `experiments/beir_e5/{generate_beir_e5.py, rerank_beir_e5.py, run_all_beir_e5.sh}`. Two-stage pipeline:
+  - **Stage 1 (gccp-decoder env):** load BEIR test split via `ir_datasets`; encode corpus + queries with `intfloat/e5-base-v2` (E5 prefixes `passage:` / `query:`); FAISS IndexFlatIP top-100; save `data/beir_e5_<dataset>.json` in the same shape as Christopher's TREC-DL E5 results.
+  - **Stage 2 (gccp-reproduce env):** identical RG-YN + GCCP + PAGC pipeline, fed from the E5 retrieval JSON. Output `results/beir/<dataset>/flan-t5-xl_e5/{metrics,*_scores}.json`.
+- Datasets selected: scifact (5K docs), nfcorpus (3.6K docs), trec-covid (171K docs).
+- Stage 1 launched on CPU for scifact + nfcorpus while GPUs were busy with decoder + efficiency runs.
+
+### 2026-05-01 — Reproducibility checklist
+- New `REPRODUCIBILITY.md` (root level) targeting the standard ACL/SIGIR reproducibility checklist: hardware, two-env table, dataset access, hyperparameters (incl.\ all seven undocumented ones from the audit), compute budget, evaluation protocol, per-result reproduction commands, and an explicit "Negative / Partial Results" section that documents (a) the unclosed DL20-T5-Large gap, (b) LLaMA-3.1 gating, (c) spectral MDS losing to top-1 BM25 anchor.
+
+### 2026-05-01 — Disk-full mitigation (operational note)
+- `/media/4TB` (where Flan-T5/UL2 HF caches live) is at 100% with old data; the symlink in `~/.cache/huggingface/hub/` no longer resolves new downloads. Worked around by setting `HF_HUB_CACHE=/media/4TB/share/models/huggingface` + `TRANSFORMERS_OFFLINE=1` for the Flan models (cached blobs still readable) and switching all decoder-only runs to local snapshot paths under `/media/20TB/shared/models/` (which has 9.3 TB free). No model files were actually missing -- just the HF download path was broken.
+
 ### 2026-05-01 — Code/repo cleanup
 - Removed two empty debug scripts (`scripts/full_dl19_fixed.py`, `scripts/test_fixed_impl.py`) that had been left untracked in the repo root.
 - Logs in `logs/` are kept as audit trail (37 MB, manageable).
