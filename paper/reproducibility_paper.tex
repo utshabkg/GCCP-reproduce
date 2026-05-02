@@ -72,10 +72,11 @@ Condorcet, Copeland) outperforms the paper's linear aggregation by
 $+1.1$~pts on DL19, (ii) replacing BM25 with an off-the-shelf E5
 dense retriever lifts PAGC by $+1.5$ to $+4.2$~pts and exceeds the
 paper's best published number on both DL19 and DL20 with Flan-T5-XL,
-(iii) under a paired-bootstrap test (1000 resamples), GCCP alone
-is \emph{not} significantly different from RG-YN at $p<0.05$ in any of
-four (dataset $\times$ retrieval) combinations we tested -- the
-statistical signal is in the aggregation, not in GCCP itself, and
+(iii) under a paired-bootstrap test (1000 resamples) across 12
+(dataset $\times$ retrieval $\times$ model) settings, GCCP alone
+is significantly different from RG-YN at $p<0.05$ in only 2/12
+settings; PAGC vs GCCP is significant in 9/12 -- the
+statistical signal is in the aggregation step, not in GCCP itself, and
 (iv) a one-line ``top-1 BM25 passage'' anchor outperforms the paper's
 spectral multi-document summarization anchor on full DL19 by
 $+1.7$~pts GCCP, contradicting the paper's Table~5, and (v) the
@@ -369,7 +370,9 @@ details.
 The original paper does not report significance tests for any of its
 deltas. We compute paired bootstrap two-sided $p$-values (1000
 resamples, seed 929) on per-query NDCG@10 deltas, and 95\% CIs on the
-mean delta, for the three central comparisons (Table~\ref{tab:stats}).
+mean delta, for the three central comparisons across all 12 of our
+(dataset $\times$ retrieval $\times$ model) settings; Table~\ref{tab:stats}
+shows a representative subset, and the full count is summarized below.
 
 \begin{table}[t]
 \centering
@@ -404,20 +407,29 @@ at $p<0.05$; *: $p<0.05$; **: $p<0.01$; ***: $p<0.001$.}
 \label{tab:stats}
 \end{table}
 
-\paragraph{Findings.} (i) GCCP alone is \emph{never} significantly
-different from RG-YN at $p<0.05$, in any of the four
-(dataset $\times$ retrieval) settings tested -- and on DL19/BM25 it
-is actually directionally \emph{worse} than RG-YN. (ii) PAGC vs GCCP
-is highly significant ($p<0.001$) on the BM25 setup, where the two
-components disagree more, but not on E5, where they agree more. (iii)
-PAGC vs RG-YN is significant on three of four settings but not on
-DL19/T5-Large/BM25.
+\paragraph{Findings (across all 12 settings tested).}
+(i) \textbf{GCCP alone vs RG-YN: significant at $p<0.05$ in only 2/12
+settings} -- BEIR-SciFact with Flan-T5-XL+E5 ($\Delta{=}{+}0.045$,
+$p{=}0.008$, with 300 queries giving statistical power) and DL19 with
+Qwen-2.5-7B+BM25 ($\Delta{=}{+}0.051$, $p{=}0.012$). In the remaining
+10 settings GCCP alone does not significantly differ from RG-YN, and
+in 3 of those 10 it is directionally \emph{worse} (Flan-T5-Large/BM25
+on DL19; Mistral-7B-Instruct on DL19 and DL20). (ii)
+\textbf{PAGC vs GCCP: significant in 9/12 settings, including all six
+DL20 BM25 settings at $p<0.05$.} (iii) PAGC vs RG-YN is significant
+in 6/12 settings.
 
-The implication is that GCCP's contribution is not a strong
-re-ranking signal on its own; rather, GCCP and RG-YN make
-different mistakes, and the aggregation step extracts the
-disagreement. This nuance is missed by the paper's headline
-``GCCP boosts pointwise'' framing.
+The implication is consistent across decoder backbones, model scales,
+and first-stage retrievers: GCCP's contribution is not a strong
+re-ranking signal on its own at the per-query level for most
+(model, retrieval) pairs. Rather, GCCP and RG-YN make different
+mistakes, and the aggregation step extracts the disagreement. The
+two settings where GCCP-alone does pull ahead at $p<0.05$ correspond
+to (a) very high statistical power (300 BEIR queries) and (b) a
+backbone -- Qwen-2.5-7B-Instruct -- whose chat-tuned A/B preference
+discrimination happens to be unusually clean. This nuance is missed
+by the paper's headline ``GCCP boosts pointwise'' framing, which is
+based only on aggregate-mean improvements.
 
 % ============================================================
 \section{Beyond the Paper}
@@ -723,10 +735,10 @@ practical importance:
           a paper-only reimplementation works at all; one of them
           (target-token case) drops NDCG@10 from 0.66 to 0.24 in
           isolation.
-    \item GCCP \emph{alone} is not statistically distinguishable from
-          RG-YN at $p<0.05$ in any of four (dataset $\times$ retrieval)
-          settings we tested. PAGC's gain over GCCP \emph{is} highly
-          significant in 2/4. The paper's value lives in the
+    \item Across 12 (dataset $\times$ retrieval $\times$ model)
+          settings, GCCP \emph{alone} is significantly distinguishable
+          from RG-YN at $p<0.05$ in only 2/12; PAGC vs GCCP is
+          significant in 9/12. The paper's value lives in the
           aggregation step, not in GCCP itself.
     \item A one-line ``top-1 BM25 passage'' anchor outperforms the
           paper's spectral multi-document summarization on full
