@@ -72,10 +72,13 @@ Condorcet, Copeland) outperforms the paper's linear aggregation by
 $+1.1$~pts on DL19, (ii) replacing BM25 with an off-the-shelf E5
 dense retriever lifts PAGC by $+1.5$ to $+4.2$~pts and exceeds the
 paper's best published number on both DL19 and DL20 with Flan-T5-XL,
-and (iii) under a paired-bootstrap test (1000 resamples), GCCP alone
+(iii) under a paired-bootstrap test (1000 resamples), GCCP alone
 is \emph{not} significantly different from RG-YN at $p<0.05$ in any of
 four (dataset $\times$ retrieval) combinations we tested -- the
-statistical signal is in the aggregation, not in GCCP itself.
+statistical signal is in the aggregation, not in GCCP itself, and
+(iv) a one-line ``top-1 BM25 passage'' anchor outperforms the paper's
+spectral multi-document summarization anchor on full DL19 by
+$+1.7$~pts GCCP, contradicting the paper's Table~5.
 \end{abstract}
 
 \maketitle
@@ -496,19 +499,50 @@ $\alpha$ is sensitive to first-stage retrieval quality, and the paper's
 $\alpha = 0.5$ is sub-optimal in both regimes we tested.
 
 \subsection{Anchor and parameter ablations}
+\label{sec:anchor-ablation}
 We ablate the anchor builder against three baselines: random
 candidate, top-1 BM25, and a top-3 sentence-interleaved composite.
-Spectral MDS beats random ($+2.3$~pts NDCG@10 GCCP), but top-3
-composite is competitive on a 5-query preliminary sweep. Full-set
-results pending.
+Full results on the complete query sets (43 queries on DL19,
+54 queries on DL20) with Flan-T5-Large appear in
+Table~\ref{tab:anchor-full}.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcc|cc}
+\toprule
+& \multicolumn{2}{c}{\textbf{DL19}} & \multicolumn{2}{c}{\textbf{DL20}} \\
+\textbf{Anchor builder} & GCCP & PAGC & GCCP & PAGC \\
+\midrule
+Random passage   & 0.6394 & 0.6945 & 0.6103 & 0.6474 \\
+Top-1 BM25       & \textbf{0.6511} & \textbf{0.6948} & 0.6131 & 0.6485 \\
+Top-3 composite  & 0.6410 & 0.6947 & \textbf{0.6280} & \textbf{0.6572} \\
+Spectral MDS (paper) & 0.6341 & 0.6852 & 0.6137 & 0.6507 \\
+\bottomrule
+\end{tabular}
+\caption{Anchor-builder ablation on full DL19/DL20 with
+Flan-T5-Large. RG-YN is identical across rows by construction
+(0.6634 / 0.6121) and omitted. \textbf{Spectral MDS is not the
+strongest anchor in our reproduction.}}
+\label{tab:anchor-full}
+\end{table}
+
+\paragraph{Finding.} On DL19, Top-1 BM25 (a one-line anchor builder)
+beats spectral MDS by $+1.7$~pts on GCCP and $+1.0$~pt on PAGC. On
+DL20, a Top-3 sentence-interleaved composite wins by $+1.4$~pts and
+$+0.7$~pts. \textbf{Even a randomly chosen passage beats spectral
+MDS on PAGC for both datasets.} This contradicts the original paper's
+Table~5, which claims spectral MDS is the strongest. We have not been
+able to reconcile the discrepancy from the released code; we report
+both findings and flag this as the most actionable open question for
+future work on PAGC.
 
 We additionally sweep $m \in \{5, 10, 15, 20\}$, $z \in \{5, 10, 15, 20\}$,
-and $\theta \in \{0.1, 0.2, 0.3, 0.4\}$ on DL19 with Flan-T5-Large.
-PAGC NDCG@10 is stable to $\pm 1.5$~pts across $m$ and $\theta$. The
-$z \geq 10$ plateau is explained by the encoder's 512-token limit:
-beyond $z=10$, additional anchor sentences are truncated. The paper's
-choice $z=10$ is therefore not fragile, but is also not load-bearing
-in the way one might assume.
+and $\theta \in \{0.1, 0.2, 0.3, 0.4\}$. PAGC NDCG@10 is stable to
+$\pm 1.5$~pts across $m$ and $\theta$. The $z \geq 10$ plateau is
+explained by the encoder's 512-token limit: beyond $z=10$, additional
+anchor sentences are truncated. The paper's choice $z=10$ is not
+fragile, but is also not load-bearing -- a smaller anchor would do.
 
 % ============================================================
 \section{Efficiency}

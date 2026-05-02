@@ -1,0 +1,39 @@
+{
+  "experiment": {
+    "dataset": "dl19",
+    "model": "google/flan-t5-large",
+    "short_name": "flan-t5-large",
+    "num_queries": 10,
+    "warmup_queries": 2,
+    "docs_per_query": 100,
+    "max_doc_length": 128,
+    "device": "cuda",
+    "timestamp": "2026-05-01T21:22:25.223122"
+  },
+  "methods": {
+    "rg_yn": {
+      "method": "RG-YN",
+      "n": 10,
+      "mean_sec_per_query": 2.0811308148084207,
+      "stdev_sec_per_query": 0.13316949473547207,
+      "total_sec": 20.81130814808421,
+      "ms_per_doc": 20.81130814808421
+    },
+    "gccp": {
+      "method": "GCCP",
+      "n": 10,
+      "mean_sec_per_query": 2.3851769387023523,
+      "stdev_sec_per_query": 0.1805331018686887,
+      "total_sec": 23.851769387023523,
+      "ms_per_doc": 23.851769387023523
+    },
+    "pagc": {
+      "method": "PAGC",
+      "n": 10,
+      "mean_sec_per_query": 4.466362979146652,
+      "stdev_sec_per_query": 0.30779151109478814,
+      "total_sec": 44.66362979146652,
+      "ms_per_doc": 44.66362979146652
+    }
+  }
+}
