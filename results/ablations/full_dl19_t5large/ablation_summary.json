@@ -1,0 +1,8 @@
+{
+  "anchor_methods_file": "results/ablations/full_dl19_t5large/anchor_methods.json",
+  "param_m_file": "results/ablations/full_dl19_t5large/param_m_sensitivity.json",
+  "param_z_file": "results/ablations/full_dl19_t5large/param_z_sensitivity.json",
+  "param_theta_file": "results/ablations/full_dl19_t5large/param_theta_sensitivity.json",
+  "num_queries": 43,
+  "model": "flan-t5-large"
+}

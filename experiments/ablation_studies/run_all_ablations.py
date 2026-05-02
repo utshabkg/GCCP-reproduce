@@ -24,7 +24,7 @@ from experiments.ablation_studies.ablation_params import run_parameter_sensitivi
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run GCCP ablation studies")
-    parser.add_argument("--dataset", default="dl19", choices=["dl19"], help="Dataset to use")
+    parser.add_argument("--dataset", default="dl19", choices=["dl19", "dl20"], help="Dataset to use")
     parser.add_argument(
         "--model",
         default="flan-t5-large",

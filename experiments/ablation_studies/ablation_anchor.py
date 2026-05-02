@@ -232,8 +232,8 @@ def run_anchor_method_ablation(
     rg_yn_results: Dict[str, Dict[str, float]] | None = None,
 ) -> Dict:
     """Run the four anchor-method ablations on the specified dataset."""
-    if dataset != "dl19":
-        raise ValueError("Collaborator 2 ablations are scoped to dl19 by default.")
+    if dataset not in {"dl19", "dl20"}:
+        raise ValueError(f"Unsupported dataset: {dataset}. Expected dl19 or dl20.")
 
     start_time = datetime.now()
     queries, qrels, bm25_results = load_dataset(dataset)

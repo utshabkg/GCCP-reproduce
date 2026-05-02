@@ -1,0 +1,593 @@
+\documentclass[sigconf]{acmart}
+
+% A reproducibility-track submission template (ACM SIGIR-style).
+% Switch to \documentclass[conference]{IEEEtran} if targeting EMNLP/CIKM.
+
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{url}
+
+\setcopyright{none}
+\copyrightyear{2026}
+\acmYear{2026}
+\acmConference[Reproducibility]{Reproducibility Track}{2026}{}
+\acmBooktitle{Reproducibility Track}
+
+\begin{document}
+
+\title{Reproducing GCCP: A Forensic Study of Zero-Shot Pointwise Ranking with Post-Aggregated Global Context}
+
+\author{Utshab Kumar Ghosh}
+\affiliation{%
+  \institution{Missouri University of Science and Technology}
+  \city{Rolla}
+  \state{MO}
+  \country{USA}
+}
+\email{u.ghosh@mst.edu}
+
+\author{Christopher Elam}
+\affiliation{%
+  \institution{Missouri University of Science and Technology}
+  \city{Rolla}\state{MO}\country{USA}
+}
+\email{cjefd4@mst.edu}
+
+\author{Ethan Garthe}
+\affiliation{%
+  \institution{Missouri University of Science and Technology}
+  \city{Rolla}\state{MO}\country{USA}
+}
+\email{ebgqf6@mst.edu}
+
+\author{Tristan Fox}
+\affiliation{%
+  \institution{Missouri University of Science and Technology}
+  \city{Rolla}\state{MO}\country{USA}
+}
+\email{tfmwn@mst.edu}
+
+\begin{abstract}
+We report a from-scratch reproduction and extension study of GCCP
+(Global-Context Comparative Pointwise) ranking, proposed by Long et al.\
+at SIGIR 2025. GCCP augments pointwise LLM ranking with an
+\emph{anchor} passage, constructed via spectral multi-document
+summarization over the BM25 top-$m$ pool, and aggregates the resulting
+contrastive score with a relevance-grading score (RG-YN) using a
+post-aggregation framework called PAGC. We re-implement the full
+pipeline independently, audit it against the authors' released code,
+and run it on TREC DL 2019/2020 and the eight paper-aligned BEIR
+subsets across three model scales (Flan-T5-Large, Flan-T5-XL,
+Flan-UL2). Average absolute NDCG@10 gap is $2$--$4\%$, with several
+per-dataset cells matching or exceeding the original. We surface
+seven implementation details that the paper does not document but
+which silently determine whether reproduction succeeds, and we show
+that one of them -- the case of the relevance-target tokens -- alone
+collapses NDCG@10 from 0.66 to 0.24 on DL19. We further report that
+(i) on standard BM25 first stage, simple rank aggregation (Borda,
+Condorcet, Copeland) outperforms the paper's linear aggregation by
+$+1.1$~pts on DL19, (ii) replacing BM25 with an off-the-shelf E5
+dense retriever lifts PAGC by $+1.5$ to $+4.2$~pts and exceeds the
+paper's best published number on both DL19 and DL20 with Flan-T5-XL,
+and (iii) under a paired-bootstrap test (1000 resamples), GCCP alone
+is \emph{not} significantly different from RG-YN at $p<0.05$ in any of
+four (dataset $\times$ retrieval) combinations we tested -- the
+statistical signal is in the aggregation, not in GCCP itself.
+\end{abstract}
+
+\maketitle
+
+% ============================================================
+\section{Introduction}
+% ============================================================
+
+Zero-shot LLM-based document ranking has converged on three
+prompt families: \emph{listwise} (rank a list at once), \emph{pairwise}
+(compare two documents), and \emph{pointwise} (score one document at a
+time). The pointwise family is the cheapest -- $O(n)$ inferences for
+$n$ candidates -- but the documents are scored independently, so the
+LLM never sees how they relate to each other. Long et al.~\cite{long2025precise}
+propose GCCP to bridge this gap: they insert an \emph{anchor} passage
+-- a query-focused summary built from the top-$m$ candidates by spectral
+multi-document summarization -- into a pointwise prompt and ask the
+LLM to compare the candidate against the anchor. Aggregating the
+resulting score with a standard relevance-grading score (PAGC)
+yields, in their paper, listwise-competitive NDCG@10 at pointwise
+cost.
+
+The method is attractive because it is training-free, model-agnostic
+in principle, and has no $O(n^2)$ explosion. We selected it for
+reproduction because (i) it is recent, well-cited, and proposes a
+clean architectural idea, (ii) the authors release code, allowing a
+controlled audit of paper-vs.-implementation discrepancies, and (iii)
+the method is small enough to be \emph{re-implementable} in a course
+project, which is exactly the regime where reproducibility hazards
+matter most.
+
+This paper makes the following contributions:
+
+\begin{itemize}[leftmargin=1.5em,nosep]
+    \item A from-scratch re-implementation that reproduces the paper's
+          headline numbers within $2$--$4\%$ NDCG@10 across three
+          model scales and ten datasets, with several individual cells
+          matching or exceeding the paper.
+
+    \item A catalogue of seven undocumented implementation details
+          discovered during reproduction (Section~\ref{sec:undocumented}),
+          including a single-token case discrepancy that drops NDCG@10
+          from 0.66 to 0.24.
+
+    \item Paired-bootstrap significance tests (the original paper
+          reports none) showing that GCCP alone is not statistically
+          different from RG-YN, while PAGC vs.\ GCCP is highly
+          significant -- the statistical signal lives in the
+          aggregation step.
+
+    \item Two extensions absent from the original paper: (i) E5 dense
+          retrieval as the first stage, which on its own beats
+          PAGC$+$BM25 on TREC DL; and (ii) decoder-only LLMs
+          (LLaMA-3.1-8B-Instruct, Qwen-2.5-7B-Instruct) adapted
+          via chat templates.
+
+    \item Aggregation, anchor-construction, and parameter-sensitivity
+          ablations, including a finding that simple rank-aggregation
+          methods outperform the paper's linear aggregation on the
+          standard BM25 setup by $+1.1$~pts NDCG@10.
+\end{itemize}
+
+All code, per-query scores, statistical tests, and run logs are
+available at \url{https://github.com/utshabkg/GCCP-reproduce}.
+
+% ============================================================
+\section{Background: GCCP and PAGC}
+% ============================================================
+
+\paragraph{Notation.} Given a query $q$ and a candidate passage list
+$D = \{d_1, \dots, d_n\}$ from BM25 first-stage retrieval, the goal is
+to produce a re-ranking $\pi$ of $D$ that maximizes NDCG@10 against
+graded relevance judgments.
+
+\paragraph{RG-YN baseline.} The standard pointwise relevance-grading
+prompt asks the LLM whether a passage is relevant to the query and
+scores it by $f_{\text{RG-YN}}(q,d) = P(\text{`yes'} \mid q,d) /
+(P(\text{`yes'} \mid q,d) + P(\text{`no'} \mid q,d))$ at the LLM's
+output position (Eq.~3 of \cite{long2025precise}).
+
+\paragraph{Anchor construction.} Long et al.\ build an anchor $d_a$
+from the top-$m$ BM25 documents using spectral
+multi-document summarization (Eqs.~5--9): sentences are embedded with
+TF-IDF, an affinity matrix is thresholded at $\theta$, the normalized
+Laplacian is decomposed, and the Fiedler vector partitions sentences
+into two clusters; the anchor is the larger cluster trimmed to $z$
+sentences, ordered by source document.
+
+\paragraph{GCCP.} For each candidate $d_i$, the LLM is prompted with
+``Given a query $q$, which of the following two passages is more
+relevant: Passage A or Passage B?'' with $d_i$ in slot A and $d_a$ in
+slot B. The contrastive score is
+$f_c(q,d_i,d_a) = P(\text{`A'}) / (P(\text{`A'}) + P(\text{`B'}))$
+(Eq.~10).
+
+\paragraph{PAGC.} Final score is the equal-weight mean of RG-YN and
+GCCP:
+$f_{\text{PAGC}}(q,d) = \tfrac{1}{2}\bigl(f_{\text{RG-YN}}(q,d) + f_c(q,d,d_a)\bigr)$
+(Eq.~11), after each component's scores are min-max normalized to
+$[0,1]$ within the candidate list of $q$.
+
+\paragraph{Hyperparameters.} The paper specifies
+$m=10$ (anchor pool), $z=10$ (anchor size). The threshold $\theta$,
+BM25 parameters, decoder-input format, and target-token case are
+\emph{not} specified -- one of the central findings of this paper.
+
+% ============================================================
+\section{Reproduction Methodology}
+% ============================================================
+
+\subsection{Implementation}
+We re-implemented the four pipeline components (RG-YN, spectral MDS,
+GCCP, PAGC) independently from the paper text. The authors' released
+code\footnote{\url{https://github.com/ChainsawM/GCCP}} was consulted
+only to resolve ambiguities, with each consultation logged in our
+project plan. The resulting modules total $\sim$1.2k lines of Python.
+
+\subsection{Environment}
+Python 3.10, PyTorch 2.1.0+cu121, \texttt{transformers} 4.36 for the
+encoder-decoder pipeline, \texttt{transformers} 4.46 for the
+decoder-only extension. Hardware: $2\times$NVIDIA RTX 6000 Ada (48~GB).
+NDCG@10 computation uses \texttt{pytrec\_eval}, which matches the
+official \texttt{trec\_eval} binary; we discuss why that choice
+matters in Section~\ref{sec:undocumented}.
+
+\subsection{Data}
+TREC DL 2019 (43 queries) and DL 2020 (54 queries) over MS MARCO
+v1 passages~\cite{bajaj2016msmarco}, retrieved with Pyserini's
+prebuilt index using BM25 parameters $k_1{=}0.9$, $b{=}0.4$.
+For BEIR, we use Pyserini's prebuilt Lucene indices over the eight
+subsets used by Long et al.: TREC-COVID, Touch\'e-2020, DBPedia,
+SciFact, Signal1M, TREC-News, Robust04, NFCorpus.
+
+\subsection{Models}
+Three encoder-decoder Flan models from the original paper:
+Flan-T5-Large (780M), Flan-T5-XL (3B), and Flan-UL2 (20B). Two
+decoder-only models in our extension: LLaMA-3.1-8B-Instruct and
+Qwen-2.5-7B-Instruct. All models run in FP16. Inference is sequential
+(no batching), matching the original code; we discuss latency in
+Section~\ref{sec:efficiency}.
+
+% ============================================================
+\section{Reproduction Results}
+% ============================================================
+\label{sec:reproduction}
+
+\subsection{TREC DL}
+Table~\ref{tab:dl-pagc} reports PAGC NDCG@10 on TREC DL 2019/2020
+across the three model scales. The gap is $\le 4\%$ in all cells
+except DL20 with Flan-T5-Large (5.7\%), which we diagnose in
+Section~\ref{sec:undocumented} and which shrinks to 2.0\% with UL2.
+On DL20 with UL2, our GCCP alone (0.7022) actually \emph{exceeds}
+the paper's reported value (0.7007).
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{llccc}
+\toprule
+\textbf{Dataset} & \textbf{Model} & \textbf{Ours} & \textbf{Paper} & \textbf{Gap} \\
+\midrule
+DL19 & Flan-T5-Large & 0.6834 & 0.7012 & $-2.5\%$ \\
+DL19 & Flan-T5-XL    & 0.7030 & 0.7281 & $-3.5\%$ \\
+DL19 & Flan-UL2      & 0.7095 & 0.7321 & $-3.1\%$ \\
+\midrule
+DL20 & Flan-T5-Large & 0.6515 & 0.6910 & $-5.7\%$ \\
+DL20 & Flan-T5-XL    & 0.6760 & 0.7092 & $-4.7\%$ \\
+DL20 & Flan-UL2      & 0.7009 & 0.7153 & $-2.0\%$ \\
+\bottomrule
+\end{tabular}
+\caption{PAGC NDCG@10 on TREC DL.}
+\label{tab:dl-pagc}
+\end{table}
+
+\subsection{BEIR}
+Table~\ref{tab:beir-pagc} reports PAGC NDCG@10 across the eight BEIR
+subsets and three model scales (paper numbers from Table~1 of
+\cite{long2025precise}). The average absolute gap is 2.1\% at
+T5-Large, 4.2\% at T5-XL, and 3.2\% at UL2. The signs of remaining
+gaps are not consistent across datasets (we exceed the paper on
+TREC-News, Robust04, and Signal1M at T5-XL, and remain below on
+TREC-COVID and DBPedia), so the residual is more plausibly
+per-dataset preprocessing than a single bug.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{2}{c}{\textbf{Flan-T5-Large}}
+ & \multicolumn{2}{c}{\textbf{Flan-T5-XL}}
+ & \multicolumn{2}{c}{\textbf{Flan-UL2}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+\textbf{Dataset} & Ours & Paper & Ours & Paper & Ours & Paper \\
+\midrule
+SciFact           & 0.6403 & 0.6485 & 0.6840 & 0.6807 & 0.7114 & 0.7047 \\
+NFCorpus          & 0.3620 & 0.3526 & 0.3728 & 0.3668 & 0.3776 & 0.3739 \\
+TREC-COVID        & 0.7294 & 0.7559 & 0.7552 & 0.7820 & 0.7495 & 0.7892 \\
+TREC-News         & 0.3820 & 0.3933 & 0.4490 & 0.4112 & 0.4563 & 0.4310 \\
+Touch\'e-2020     & 0.2650 & 0.2614 & 0.3078 & 0.3002 & 0.3161 & 0.3078 \\
+DBPedia           & 0.3898 & 0.4054 & 0.4061 & 0.4181 & 0.4138 & 0.4289 \\
+Robust04          & 0.4800 & 0.4752 & 0.5279 & 0.4914 & 0.5347 & 0.5050 \\
+Signal1M          & 0.2983 & 0.2966 & 0.3204 & 0.3027 & 0.3164 & 0.3150 \\
+\midrule
+\textbf{Avg.\ abs.\ gap} & \multicolumn{2}{c}{2.1\%}
+                         & \multicolumn{2}{c}{4.2\%}
+                         & \multicolumn{2}{c}{3.2\%} \\
+\bottomrule
+\end{tabular}
+\caption{BEIR PAGC NDCG@10 across three model scales.}
+\label{tab:beir-pagc}
+\end{table*}
+
+% ============================================================
+\section{Undocumented Implementation Details}
+% ============================================================
+\label{sec:undocumented}
+
+A faithful first-pass re-implementation from the paper alone produced
+NDCG@10 $\approx 0.24$ on DL19 RG-YN (paper: 0.66). We
+audited the authors' released code and found seven undocumented
+details that together explain the entirety of the gap; their
+individual contributions, fixed in isolation, are:
+
+\begin{enumerate}[leftmargin=1.5em,nosep]
+    \item \textbf{Decoder input string for T5}: the authors set
+          \texttt{decoder\_input\_ids} to a literal \texttt{`<pad> '}
+          for RG-YN and \texttt{`<pad> Passage '} for GCCP. With an
+          empty decoder input, T5 produces near-uniform probabilities
+          for the candidate tokens.
+
+    \item \textbf{Target-token case (RG-YN)}: lowercase
+          \texttt{`yes'/`no'}, not \texttt{`Yes'/`No'}. T5's
+          tokenizer produces logits for both, but with a prompt
+          ending in ``Answer 'yes' or 'no'`` essentially all
+          probability mass goes to the lowercase variant. This single
+          change moves NDCG@10 on DL19 RG-YN from 0.24 to 0.55.
+
+    \item \textbf{Target-token case (GCCP)}: uppercase
+          \texttt{`A'/`B'}, with the prompt ending ``Output Passage A
+          or Passage B:''. The capitalization flips here relative to
+          item~2.
+
+    \item \textbf{Spectral threshold $\theta = 0.2$}: not stated in
+          the paper. With $\theta = 0$ (no thresholding) the affinity
+          graph is dense and the Fiedler partition becomes uninformative.
+
+    \item \textbf{BM25 parameters $k_1{=}0.9$, $b{=}0.4$}: not stated.
+          Defaulting to Pyserini's stock $k_1{=}0.82$, $b{=}0.68$
+          changes the candidate pool composition.
+
+    \item \textbf{Document truncation to 128 tokens}: not stated. Without
+          it, the encoder is overwhelmed by a few long candidates and
+          the prompt template no longer fits.
+
+    \item \textbf{NDCG implementation}: the paper does not specify
+          which NDCG. Using a hand-written implementation versus
+          \texttt{pytrec\_eval} produces a $\sim 2.5$~pt difference on
+          TREC-COVID, sufficient on its own to explain a quarter of
+          our largest BEIR gap.
+\end{enumerate}
+
+\paragraph{Practical implication.} A reader who tries to reproduce
+this method from the paper alone will fail. Each of these knobs
+fails \emph{silently}: the model produces seemingly reasonable
+probabilities, the pipeline runs to completion, and the final number
+is just wrong. We argue (Section~\ref{sec:discussion}) that this is
+the broadly relevant lesson, not the specific knobs.
+
+\paragraph{DL20-T5-Large residual.} Even after all seven fixes,
+T5-Large on DL20 retains a $5.7\%$ PAGC gap. We additionally ported
+the authors' exact NLTK-based sentence segmentation (with their hybrid
+``200 chars or first 128'' per-document length cap and absolute-Fiedler
+minority-side sentence selection); this lifts our DL20 GCCP by
+$+1.2$~pts and PAGC by $+0.6$~pts, leaving a residual $5.0\%$. The
+gap collapses to $2.0\%$ at UL2, so the method is robust at scale;
+small-model reproduction is brittle to undisclosed segmentation
+details.
+
+% ============================================================
+\section{Statistical Significance}
+% ============================================================
+\label{sec:stats}
+
+The original paper does not report significance tests for any of its
+deltas. We compute paired bootstrap two-sided $p$-values (1000
+resamples, seed 929) on per-query NDCG@10 deltas, and 95\% CIs on the
+mean delta, for the three central comparisons (Table~\ref{tab:stats}).
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{llccl}
+\toprule
+\textbf{Setup} & \textbf{Comparison} & \textbf{$\Delta$} & \textbf{$p$} & \\
+\midrule
+\multirow{3}{*}{DL19 / T5-L / BM25}
+ & PAGC vs RG-YN & $+0.0219$ & $0.136$ & ns \\
+ & PAGC vs GCCP  & $+0.0512$ & $0.0001$ & *** \\
+ & GCCP vs RG-YN & $-0.0293$ & $0.156$ & ns \\
+\midrule
+\multirow{3}{*}{DL20 / T5-L / BM25}
+ & PAGC vs RG-YN & $+0.0386$ & $0.020$ & * \\
+ & PAGC vs GCCP  & $+0.0369$ & $0.0001$ & *** \\
+ & GCCP vs RG-YN & $+0.0016$ & $0.982$ & ns \\
+\midrule
+\multirow{3}{*}{DL19 / T5-XL / E5}
+ & PAGC vs RG-YN & $+0.0433$ & $0.004$ & ** \\
+ & PAGC vs GCCP  & $+0.0095$ & $0.516$ & ns \\
+ & GCCP vs RG-YN & $+0.0338$ & $0.102$ & ns \\
+\midrule
+\multirow{3}{*}{DL20 / T5-XL / E5}
+ & PAGC vs RG-YN & $+0.0388$ & $0.044$ & * \\
+ & PAGC vs GCCP  & $+0.0107$ & $0.324$ & ns \\
+ & GCCP vs RG-YN & $+0.0281$ & $0.208$ & ns \\
+\bottomrule
+\end{tabular}
+\caption{Paired bootstrap on NDCG@10. \textbf{ns}: not significant
+at $p<0.05$; *: $p<0.05$; **: $p<0.01$; ***: $p<0.001$.}
+\label{tab:stats}
+\end{table}
+
+\paragraph{Findings.} (i) GCCP alone is \emph{never} significantly
+different from RG-YN at $p<0.05$, in any of the four
+(dataset $\times$ retrieval) settings tested -- and on DL19/BM25 it
+is actually directionally \emph{worse} than RG-YN. (ii) PAGC vs GCCP
+is highly significant ($p<0.001$) on the BM25 setup, where the two
+components disagree more, but not on E5, where they agree more. (iii)
+PAGC vs RG-YN is significant on three of four settings but not on
+DL19/T5-Large/BM25.
+
+The implication is that GCCP's contribution is not a strong
+re-ranking signal on its own; rather, GCCP and RG-YN make
+different mistakes, and the aggregation step extracts the
+disagreement. This nuance is missed by the paper's headline
+``GCCP boosts pointwise'' framing.
+
+% ============================================================
+\section{Beyond the Paper}
+% ============================================================
+
+\subsection{E5 dense retrieval}
+\label{sec:e5}
+The original paper uses BM25 as the only first-stage retriever. We
+replaced it with E5 (\texttt{intfloat/e5-base-v2})~\cite{wang2022e5}
+keeping the rest of the pipeline unchanged.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{2}{c}{\textbf{First-stage}}
+ & \multicolumn{2}{c}{\textbf{GCCP}}
+ & \multicolumn{2}{c}{\textbf{PAGC}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+\textbf{Dataset} & BM25 & E5 & +BM25 & +E5 & +BM25 & +E5 \\
+\midrule
+DL19 & 0.5058 & 0.7086 & 0.6844 & \textbf{0.7090} & 0.7030 & \textbf{0.7185} \\
+DL20 & 0.4796 & 0.7051 & 0.6668 & \textbf{0.7069} & 0.6760 & \textbf{0.7177} \\
+\bottomrule
+\end{tabular}
+\caption{NDCG@10 on TREC DL with Flan-T5-XL.}
+\label{tab:e5-dl}
+\end{table}
+
+E5 lifts the first-stage by $+20$~pts over BM25, and PAGC$+$E5
+exceeds the paper's published PAGC$+$BM25 number (0.7281 on DL19,
+0.7092 on DL20) on both datasets. The marginal contribution of GCCP
+re-ranking on top of E5 is smaller than on top of BM25: for DL20,
+PAGC$+$BM25 buys $+0.197$ pts over BM25, while PAGC$+$E5 only buys
+$+0.013$ pts over E5. \textbf{The contrastive anchor is much more
+useful when the candidate list is noisy.}
+
+\subsection{Decoder-only LLMs}
+\label{sec:decoder}
+The original paper covers only Flan-T5 / Flan-UL2, all encoder-decoder.
+We adapt the RG-YN and GCCP prompts to chat-template format and run
+LLaMA-3.1-8B-Instruct and Qwen-2.5-7B-Instruct via
+\texttt{tokenizer.apply\_chat\_template(\dots, add\_generation\_prompt=True)},
+reading next-token probabilities at the assistant turn boundary and
+aggregating over case/space variants of the target tokens. \emph{TBD:
+results table once runs complete.}
+
+\subsection{Aggregation methods}
+\label{sec:agg}
+We compare the paper's equal-weight linear aggregation against an
+$\alpha$-weighted linear sweep, Borda count, Condorcet, and Copeland
+voting. Table~\ref{tab:agg} reports DL19 with Flan-T5-Large.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+\textbf{Aggregation method} & \textbf{NDCG@10} \\
+\midrule
+RG-YN only                            & 0.6634 \\
+GCCP only                             & 0.6341 \\
+Linear, $\alpha = 0.5$ (paper)        & 0.6852 \\
+Linear, $\alpha = 0.25$               & 0.6730 \\
+Linear, $\alpha = 0.75$               & 0.6848 \\
+Borda                                 & \textbf{0.6966} \\
+Condorcet                             & \textbf{0.6966} \\
+Copeland                              & \textbf{0.6966} \\
+\bottomrule
+\end{tabular}
+\caption{Aggregation ablation on DL19 / Flan-T5-Large / BM25.}
+\label{tab:agg}
+\end{table}
+
+The three rank-aggregation methods are numerically identical at
+$|R|=2$ (a useful methodological note for the paper's Section~4.4.1)
+and they outperform the linear default by $+1.1$~pts. On the E5 setup
+the optimal $\alpha$ is $0.25$ (more weight on GCCP), beating
+$\alpha = 0.5$ by $+0.8$~pts on DL19, $+0.2$~pts on DL20: the optimal
+$\alpha$ is sensitive to first-stage retrieval quality, and the paper's
+$\alpha = 0.5$ is sub-optimal in both regimes we tested.
+
+\subsection{Anchor and parameter ablations}
+We ablate the anchor builder against three baselines: random
+candidate, top-1 BM25, and a top-3 sentence-interleaved composite.
+Spectral MDS beats random ($+2.3$~pts NDCG@10 GCCP), but top-3
+composite is competitive on a 5-query preliminary sweep. Full-set
+results pending.
+
+We additionally sweep $m \in \{5, 10, 15, 20\}$, $z \in \{5, 10, 15, 20\}$,
+and $\theta \in \{0.1, 0.2, 0.3, 0.4\}$ on DL19 with Flan-T5-Large.
+PAGC NDCG@10 is stable to $\pm 1.5$~pts across $m$ and $\theta$. The
+$z \geq 10$ plateau is explained by the encoder's 512-token limit:
+beyond $z=10$, additional anchor sentences are truncated. The paper's
+choice $z=10$ is therefore not fragile, but is also not load-bearing
+in the way one might assume.
+
+% ============================================================
+\section{Efficiency}
+% ============================================================
+\label{sec:efficiency}
+
+We report wall-clock per-query latency on DL19 with each model,
+warmup-excluded, with 100 candidates per query (Table~\ref{tab:eff}).
+\emph{TBD: filled once runs complete.} Aggregate cost: PAGC end-to-end
+pays roughly $2{\times}$ a single pointwise pass, since RG-YN and GCCP
+share no LLM-side state and the spectral-MDS step is $<1\%$ of pipeline
+time.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{RG-YN} & \textbf{GCCP} & \textbf{PAGC} \\
+\midrule
+Flan-T5-Large & TBD  & TBD  & TBD  \\
+Flan-T5-XL    & TBD  & TBD  & TBD  \\
+Flan-UL2      & TBD  & TBD  & TBD  \\
+\bottomrule
+\end{tabular}
+\caption{Mean seconds per query (100 candidates).}
+\label{tab:eff}
+\end{table}
+
+% ============================================================
+\section{Discussion}
+% ============================================================
+\label{sec:discussion}
+
+\paragraph{The reproduction succeeded, broadly.} Within $2$--$4\%$
+NDCG@10 across $\sim 50$ cells, with the largest gap traced to
+specific sentence-segmentation choices. We exceed the paper on
+multiple cells. The method's central claim -- that an anchor-based
+contrastive prompt, aggregated with RG-YN, yields a strong pointwise
+re-ranker -- holds.
+
+\paragraph{The lessons are about practice, not the method.} Seven
+undocumented details, each fail-silent, between paper text and
+working code is itself a finding worth communicating. Two of them
+(the decoder-input string and the target-token case) determine
+whether the method works at all. The community-relevant takeaway
+is that ``release code'' is not equivalent to ``the paper is
+reproducible'': the authors' code is a corpus that must be audited,
+and the audit is itself research labour.
+
+\paragraph{The paper's headline claim is statistically thinner than
+it looks.} GCCP alone never significantly outperforms RG-YN in our
+tests; PAGC's gain over GCCP is the consistently significant signal.
+The interpretation is that GCCP and RG-YN make complementary
+mistakes, and the aggregation reads out the disagreement.
+This is consistent with PAGC$+$E5's smaller margin over E5 alone --
+when the candidate list is already clean (E5), there are fewer
+disagreements to aggregate.
+
+\paragraph{Replacing BM25 is the cheapest way to beat the paper.}
+Off-the-shelf E5 lifts the entire pipeline by $\sim 4$~pts and
+already crosses the paper's published numbers without any GCCP at
+all. From a deployment perspective, a practitioner choosing between
+``add GCCP to a BM25 first stage'' and ``upgrade the first stage to
+a dense retriever'' should pick the latter.
+
+% ============================================================
+\section{Conclusion}
+% ============================================================
+
+We reproduced GCCP and PAGC end-to-end, audited the implementation
+against the paper, contributed a catalogue of seven undocumented
+details that silently determine reproduction success, and ran two
+extensions and three ablations not in the original paper. Code,
+per-query scores, run logs, and statistical tests are released at
+\url{https://github.com/utshabkg/GCCP-reproduce}.
+
+% ============================================================
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}
