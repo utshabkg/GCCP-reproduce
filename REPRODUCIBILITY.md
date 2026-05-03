@@ -69,19 +69,30 @@ generated on the fly inside `scripts/run_beir.py`.
 
 All models loaded via HuggingFace `transformers`. FP16 on GPU.
 
-| Model                         | Size  | License      | Cached at                                   |
-|-------------------------------|-------|--------------|---------------------------------------------|
-| google/flan-t5-large          | 780M  | apache-2.0   | `/media/4TB/share/models/huggingface/`      |
-| google/flan-t5-xl             | 3B    | apache-2.0   | same                                        |
-| google/flan-ul2               | 20B   | apache-2.0   | same                                        |
-| Qwen/Qwen2.5-7B-Instruct      | 7B    | qwen-license | HF cache, downloaded at run time            |
-| mistralai/Mistral-7B-Instruct-v0.3 | 7B | apache-2.0 | HF cache, downloaded at run time            |
-| ~~meta-llama/Meta-Llama-3.1-8B-Instruct~~ | 8B | llama-license | **Gated; not used.** Mistral-7B is the open substitute. |
+| Model                              | Size  | License        | Cached at                                                                  |
+|------------------------------------|-------|----------------|----------------------------------------------------------------------------|
+| google/flan-t5-large               | 780M  | apache-2.0     | `/media/4TB/share/models/huggingface/`                                    |
+| google/flan-t5-xl                  | 3B    | apache-2.0     | same                                                                       |
+| google/flan-ul2                    | 20B   | apache-2.0     | same                                                                       |
+| meta-llama/Meta-Llama-3.1-8B-Instruct | 8B | llama-3.1      | local snapshot at `/media/20TB/shared/models/meta-llama/Llama-3.1-8B-Instruct/` |
+| Qwen/Qwen2.5-7B-Instruct           | 7B    | qwen-license   | local snapshot at `/media/20TB/shared/models/qwen/Qwen2.5-7B-Instruct/`   |
+| mistralai/Mistral-7B-Instruct-v0.3 | 7B    | apache-2.0     | local snapshot at `/media/20TB/shared/models/mistralai/Mistral-7B-Instruct-v0.3/` |
+| ~~Qwen/Qwen2.5-72B-Instruct-AWQ~~  | 72B   | qwen-license   | local; **dropped from final results** -- see note below                   |
 
-LLaMA-3.1-8B is in the original proposal but requires Hugging Face
-auth (gated repo). We documented the failure and substituted
-Mistral-7B-Instruct-v0.3 to keep two decoder-only families in the
-extension.
+LLaMA-3.1-8B-Instruct is gated on Hugging Face but a snapshot was
+already present on local university storage; we ran it from the local
+snapshot under `TRANSFORMERS_OFFLINE=1` rather than re-downloading.
+All four 7--8B decoder-only runs (LLaMA, Qwen, Mistral, $\times$ DL19/DL20)
+were obtained from these local snapshots.
+
+\textbf{Qwen-2.5-72B-AWQ stretch goal.} We attempted the AWQ-quantized
+72B as a scaling data point. Loading the model requires the
+\texttt{autoawq} package, whose 0.2.7+ versions force a PyTorch
+upgrade to $\geq 2.5.1$ that breaks the rest of the gccp-decoder
+environment (CUDA build incompatibility). Older autoawq versions
+need \texttt{transformers.models.qwen3} which is unavailable in our
+pinned transformers 4.49. We backed the change out and report 72B as
+future work.
 
 ---
 

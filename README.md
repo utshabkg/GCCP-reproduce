@@ -4,7 +4,7 @@ Reproducing "Precise Zero-Shot Pointwise Ranking with LLMs through Post-Aggregat
 
 ## Overview
 
-This project reproduces the GCCP (Global-Context Comparative Pointwise) method for zero-shot document ranking. We validate the original results and document critical implementation details that were not specified in the paper.
+This project reproduces the GCCP (Global-Consistent Comparative Pointwise) method for zero-shot document ranking. We validate the original results and document critical implementation details that were not specified in the paper.
 
 ## Key Results
 
@@ -88,10 +88,10 @@ python scripts/run_beir.py --dataset all --model flan-t5-xl
 
 Original paper:
 ```
-@inproceedings{gccp2025,
+@inproceedings{long2025precise,
   title={Precise Zero-Shot Pointwise Ranking with LLMs through Post-Aggregated Global Context Information},
-  author={...},
-  booktitle={SIGIR},
+  author={Long, Kehan and Li, Shasha and Xu, Chen and Tang, Jintao and Wang, Ting},
+  booktitle={Proceedings of the 48th International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR)},
   year={2025}
 }
 ```

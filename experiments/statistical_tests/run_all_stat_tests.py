@@ -37,7 +37,13 @@ def per_q_metric(qrels, scores, metric):
     return {qid: r[metric] for qid, r in ev.evaluate({q: scores[q] for q in common}).items()}
 
 
-def paired_bootstrap(base, sysrun, n=1000, seed=929):
+def paired_bootstrap(base, sysrun, n=10000, seed=929):
+    """Paired bootstrap on the mean of (sysrun - base).
+
+    n=10000 follows standard practice for paired-bootstrap p-values on
+    small IR test sets (DL19 has n=43, DL20 n=54, BEIR sets vary);
+    1k resamples produce noticeably jittery p-values at this scale.
+    """
     rng = np.random.default_rng(seed)
     diffs = sysrun - base
     delta = float(diffs.mean())
@@ -60,6 +66,23 @@ def sig_marker(p):
     if p < 0.05:
         return "*"
     return "ns"
+
+
+def holm_bonferroni(pvalues):
+    """Holm-Bonferroni step-down correction (more powerful than Bonferroni).
+
+    Returns a list of (corrected_p, reject_at_0.05) in the original order.
+    """
+    n = len(pvalues)
+    indexed = sorted(enumerate(pvalues), key=lambda kv: kv[1])
+    corrected = [0.0] * n
+    running_max = 0.0
+    for rank, (orig_idx, p) in enumerate(indexed):
+        adj = min(1.0, (n - rank) * p)
+        # Enforce monotonicity
+        running_max = max(running_max, adj)
+        corrected[orig_idx] = running_max
+    return [(c, c < 0.05) for c in corrected]
 
 
 def discover_score_dirs() -> List[Tuple[str, Path]]:
@@ -154,13 +177,42 @@ def main() -> None:
             continue
         summary[label] = result
 
+    # ---------------------- Holm-Bonferroni correction --------------------
+    # Apply across ALL pairwise comparisons across ALL settings to avoid
+    # multiple-comparison inflation. We separately correct each of the three
+    # comparison families (PAGC vs RG-YN, PAGC vs GCCP, GCCP vs RG-YN) so a
+    # significant family-conditional finding is preserved even if other
+    # families have many positives.
+    families = {"PAGC vs RG-YN", "PAGC vs GCCP", "GCCP vs RG-YN"}
+    for fam in families:
+        labels = [(lab, summary[lab]["comparisons"][fam]) for lab in summary
+                  if fam in summary[lab]["comparisons"]]
+        ps = [c["p_value"] for _, c in labels]
+        if not ps:
+            continue
+        adj = holm_bonferroni(ps)
+        for (lab, c), (cp, reject) in zip(labels, adj):
+            summary[lab]["comparisons"][fam]["p_value_holm"] = cp
+            summary[lab]["comparisons"][fam]["significance_holm"] = (
+                sig_marker(cp)
+            )
+            summary[lab]["comparisons"][fam]["reject_at_0.05_holm"] = reject
+
+    # ---------------------- print --------------------
+    for label, result in summary.items():
         print(f"\n=== {label} ({result['n_queries']} queries) ===")
-        print(f"{'Comparison':<18} {'Δ NDCG@10':>10}  {'95% CI':<22}  {'p':>8}  sig")
+        print(
+            f"{'Comparison':<18} {'Δ NDCG@10':>10}  {'95% CI':<22}  "
+            f"{'p_raw':>8}  raw  {'p_Holm':>8}  Holm"
+        )
         for name, c in result["comparisons"].items():
             ci = f"[{c['ci_95_lo']:+.4f}, {c['ci_95_hi']:+.4f}]"
+            holm_p = c.get("p_value_holm", c["p_value"])
+            holm_sig = c.get("significance_holm", c["significance"])
             print(
                 f"{name:<18} {c['delta_mean']:>+10.4f}  {ci:<22}  "
-                f"{c['p_value']:>8.4f}  {c['significance']}"
+                f"{c['p_value']:>8.4f}  {c['significance']:<3}  "
+                f"{holm_p:>8.4f}  {holm_sig}"
             )
 
     out_path = out_dir / "all_paired_bootstrap.json"

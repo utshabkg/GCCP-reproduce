@@ -1,8 +1,10 @@
 @inproceedings{long2025precise,
   title={Precise Zero-Shot Pointwise Ranking with LLMs through Post-Aggregated Global Context Information},
-  author={Long, Kehan and Sun, Shasha and Tang, Chenyan and Zhang, Yu and others},
+  author={Long, Kehan and Li, Shasha and Xu, Chen and Tang, Jintao and Wang, Ting},
   booktitle={Proceedings of the 48th International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR)},
-  year={2025}
+  year={2025},
+  doi={10.1145/3726302.3729962},
+  note={arXiv:2506.10859}
 }
 
 @inproceedings{sun2023chatgpt,
@@ -14,7 +16,7 @@
 
 @inproceedings{qin2024pairwise,
   title={Large Language Models are Effective Text Rankers with Pairwise Ranking Prompting},
-  author={Qin, Zhen and Jagerman, Rolf and Hui, Kai and Zhuang, Honglei and Wu, Junru and Yan, Le and Shen, Jiaming and Liu, Tianqi and Liu, Jialu and Metzler, Donald and others},
+  author={Qin, Zhen and Jagerman, Rolf and Hui, Kai and Zhuang, Honglei and Wu, Junru and Yan, Le and Shen, Jiaming and Liu, Tianqi and Liu, Jialu and Metzler, Donald and Bendersky, Michael},
   booktitle={Findings of the Association for Computational Linguistics: NAACL},
   year={2024}
 }
@@ -26,11 +28,13 @@
   year={2024}
 }
 
-@inproceedings{pradeep2023rankzephyr,
+@misc{pradeep2023rankzephyr,
   title={{RankZephyr}: Effective and Robust Zero-Shot Listwise Reranking is a Breeze!},
   author={Pradeep, Ronak and Sharifymoghaddam, Sahel and Lin, Jimmy},
-  booktitle={arXiv preprint arXiv:2312.02724},
-  year={2023}
+  year={2023},
+  eprint={2312.02724},
+  archivePrefix={arXiv},
+  primaryClass={cs.IR}
 }
 
 @inproceedings{zhuang2024beyond,
@@ -70,7 +74,7 @@
 
 @article{bajaj2016msmarco,
   title={{MS MARCO}: A Human Generated MAchine Reading COmprehension Dataset},
-  author={Bajaj, Payal and Campos, Daniel and Craswell, Nick and Deng, Li and Gao, Jianfeng and Liu, Xiaodong and Majumder, Rangan and McNamara, Andrew and Mitra, Bhaskar and Nguyen, Tri and others},
+  author={Bajaj, Payal and Campos, Daniel and Craswell, Nick and Deng, Li and Gao, Jianfeng and Liu, Xiaodong and Majumder, Rangan and McNamara, Andrew and Mitra, Bhaskar and Nguyen, Tri and Rosenberg, Mir and Song, Xia and Stoica, Alina and Tiwary, Saurabh and Wang, Tong},
   journal={arXiv preprint arXiv:1611.09268},
   year={2016}
 }
@@ -89,23 +93,56 @@
   year={2022}
 }
 
-@article{llama3report,
+@misc{llama3report,
   title={The {Llama} 3 Herd of Models},
-  author={{Meta AI}},
-  journal={arXiv preprint arXiv:2407.21783},
-  year={2024}
+  author={Grattafiori, Aaron and Dubey, Abhimanyu and Jauhri, Abhinav and Pandey, Abhinav and Kadian, Abhishek and {Meta AI}},
+  year={2024},
+  eprint={2407.21783},
+  archivePrefix={arXiv},
+  primaryClass={cs.AI}
 }
 
-@article{qwen25technical,
+@misc{qwen25technical,
   title={Qwen2.5 Technical Report},
-  author={{Qwen Team, Alibaba}},
-  journal={arXiv preprint arXiv:2412.15115},
-  year={2024}
+  author={Yang, An and Yang, Baosong and Zhang, Beichen and Hui, Binyuan and Zheng, Bo and Yu, Bowen and Li, Chengyuan and Liu, Dayiheng and {Qwen Team, Alibaba}},
+  year={2024},
+  eprint={2412.15115},
+  archivePrefix={arXiv},
+  primaryClass={cs.CL}
 }
 
-@article{jiang2023mistral,
+@misc{jiang2023mistral,
   title={Mistral 7B},
-  author={Jiang, Albert Q. and Sablayrolles, Alexandre and Mensch, Arthur and Bamford, Chris and Chaplot, Devendra Singh and de las Casas, Diego and Bressand, Florian and Lengyel, Gianna and Lample, Guillaume and Saulnier, Lucile and others},
-  journal={arXiv preprint arXiv:2310.06825},
-  year={2023}
+  author={Jiang, Albert Q. and Sablayrolles, Alexandre and Mensch, Arthur and Bamford, Chris and Chaplot, Devendra Singh and de las Casas, Diego and Bressand, Florian and Lengyel, Gianna and Lample, Guillaume and Saulnier, Lucile and Lavaud, L{\'e}lio Renard and Lachaux, Marie-Anne and Stock, Pierre and Le Scao, Teven and Lavril, Thibaut and Wang, Thomas and Lacroix, Timoth{\'e}e and El Sayed, William},
+  year={2023},
+  eprint={2310.06825},
+  archivePrefix={arXiv},
+  primaryClass={cs.CL}
+}
+
+@inproceedings{lin2018msmarco,
+  title={{Anserini}: Reproducible Ranking Baselines Using {Lucene}},
+  author={Yang, Peilin and Fang, Hui and Lin, Jimmy},
+  booktitle={Journal of Data and Information Quality},
+  volume={10},
+  number={4},
+  pages={1--20},
+  year={2018}
+}
+
+@inproceedings{lin2022leveraging,
+  title={Building a Culture of Reproducibility in Academic Research},
+  author={Lin, Jimmy},
+  booktitle={SIGIR Forum},
+  volume={56},
+  number={2},
+  year={2022}
+}
+
+@inproceedings{breuer2020repro,
+  title={How to Measure the Reproducibility of System-oriented {IR} Experiments},
+  author={Breuer, Timo and Ferro, Nicola and Fuhr, Norbert and Maistro, Maria and Sakai, Tetsuya and Schaer, Philipp and Soboroff, Ian},
+  booktitle={Proceedings of the 43rd International ACM SIGIR Conference on Research and Development in Information Retrieval},
+  pages={349--358},
+  year={2020}
 }
