@@ -755,6 +755,111 @@ finding because it is replicable and because it falsifies a tempting
 sweeping claim, but we no longer present it as a deployment
 recommendation.
 
+\subsection{Beyond the two-component PAGC: adding RG-S}
+\label{sec:pagc_qsg}
+
+The paper proposes several PAGC variants combining GCCP with one or
+more pointwise backbones (RG-YN, RG-S(0,$k$), QG); their strongest
+reported variant is PAGC-QSG~$=$~QG~$+$~RG-S~$+$~GCCP. To address
+the reasonable concern that we have been benchmarking only the
+weakest variant (PAGC~$=$~RG-YN~$+$~GCCP), we add the RG-S(0,4)
+component and report the three-component PAGC-RS-YN-GCCP variant.
+We do not implement QG -- it requires a different inference pattern
+(full-sequence query log-likelihood given the document) and we leave
+it for follow-up work.
+
+\paragraph{Setup.} RG-S(0,4) follows the authors'
+\texttt{clf\_ranking.py} template~4 verbatim: prompt is ``From a
+scale of 0 to 4, judge the relevance between the query and the
+document. Query: \dots Document: \dots Output:''; score is peak
+relevance, $P(\text{`4'})$ over the softmax of the five integer
+labels; document truncation 128 tokens; T5 decoder primer
+\texttt{`<pad> '}. We compute RG-S scores fresh and reuse our
+already-saved RG-YN and GCCP per-query scores.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcc|cc}
+\toprule
+& \multicolumn{2}{c}{\textbf{Ours (T5-Large/BM25)}}
+& \multicolumn{2}{c}{\textbf{Paper (Table 4 hom.)}} \\
+\textbf{Method}        & DL19 & DL20 & TREC avg & BEIR avg \\
+\midrule
+RG-S only              & 0.5872 & 0.5204 & --     & --     \\
+RG-YN only             & 0.6634 & 0.6121 & --     & --     \\
+GCCP only              & 0.6341 & 0.6137 & --     & --     \\
+PAGC = RG-YN $+$ GCCP  & 0.6852 & 0.6507 & --     & --     \\
+PAGC = RG-S $+$ GCCP   & 0.6547 & 0.6058 & --     & --     \\
+PAGC-RS-YN-GCCP        & 0.6856 & 0.6325 & 0.6634 & 0.4538 \\
+\bottomrule
+\end{tabular}
+\caption{PAGC-RS-YN-GCCP (paper's Table~4 ``RG-S+RG-YN+GCCP''
+homogeneous variant) on Flan-T5-Large/BM25. Our TREC average
+$(0.6856 + 0.6325)/2 = 0.6591$ vs the paper's $0.6634$ -- a
+$0.4\%$ gap, consistent with our other reproductions.}
+\label{tab:pagc_rs}
+\end{table}
+
+\paragraph{Findings.} (a) The 3-component PAGC reproduces the paper's
+Table~4 number within $0.4\%$ on TREC average. (b) On DL19 the
+three-component aggregation is essentially tied with the two-component
+$(0.6856$ vs $0.6852)$. (c) \textbf{On DL20 the three-component
+aggregation \emph{loses} to the two-component} ($0.6325$ vs $0.6507$,
+$-1.8$ pts). RG-S alone is much weaker than RG-YN on DL20 ($0.5204$
+vs $0.6121$); aggregating a weak component drags the mean rank.
+This is a real but subtle phenomenon hidden by the paper's choice to
+report only TREC$+$BEIR averaged; per-dataset, the value of adding
+RG-S is non-monotonic. The paper's strongest variant (PAGC-QSG)
+remains untested by us; we expect QG to behave similarly to the
+other components -- helpful when its component scores are uncorrelated
+with RG-YN/GCCP errors, but not always so.
+
+\subsection{Listwise (RankGPT) baseline at the same model scale}
+\label{sec:rankgpt}
+
+The original paper compares PAGC against listwise/pairwise methods
+(RankGPT, PRP-Allpair, Setwise-Heapsort, etc.) using GPT-3.5/4
+backbones in their Table~2. To address the reviewer-style question
+``how does our reproduced PAGC compare to a listwise baseline at the
+same compute scale?'', we run the listwise sliding-window prompting
+of \cite{sun2023chatgpt} via the \texttt{llm-rankers}
+implementation, with window 20 and step 10, on the same Flan-T5
+backbones we use for PAGC.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Method}                        & DL19   & DL20 \\
+\midrule
+BM25                                   & 0.5058 & 0.4796 \\
+RankGPT-listwise / Flan-T5-Large       & 0.5279 & 0.4715 \\
+RankGPT-listwise / Flan-T5-XL          & 0.5238 & 0.4932 \\
+\midrule
+PAGC / Flan-T5-Large                   & \textbf{0.6852} & \textbf{0.6507} \\
+PAGC / Flan-T5-XL                      & \textbf{0.6939} & 0.6760 \\
+\bottomrule
+\end{tabular}
+\caption{Listwise (RankGPT-style) reranking vs PAGC at the same
+Flan-T5 model scale. The paper's Table~2 RankGPT numbers ($0.6690$/
+$0.6260$) are with GPT-3.5/4, not Flan-T5; they are not directly
+comparable.}
+\label{tab:rankgpt}
+\end{table}
+
+\paragraph{Finding.} RankGPT-listwise with Flan-T5 backbones barely
+beats BM25 on DL19 and is below BM25 on DL20 -- because Flan-T5 is
+trained for short instruction-following tasks rather than for long
+listwise reordering, and at this scale the listwise prompt does not
+elicit reliable rerankings. PAGC at the same scale outperforms
+RankGPT by $\sim 16$~pts on both datasets. We do not claim PAGC
+outperforms GPT-3.5/4 listwise; that comparison is not in scope for
+us. We do claim that \emph{at fixed model scale}, the pointwise-with-
+contrastive-anchor approach is markedly stronger than the
+listwise-sliding-window approach with Flan-T5 backbones.
+
 \subsection{Anchor and parameter ablations}
 \label{sec:anchor-ablation}
 We ablate the anchor builder against three baselines: random
