@@ -40,6 +40,11 @@ IR_DATASETS_NAMES = {
     "scifact": "beir/scifact/test",
     "nfcorpus": "beir/nfcorpus/test",
     "trec-covid": "beir/trec-covid",
+    "webis-touche2020": "beir/webis-touche2020/v2",
+    "dbpedia-entity": "beir/dbpedia-entity/test",
+    "robust04": "beir/robust04",
+    "trec-news": "beir/trec-news",
+    "signal1m": "beir/signal1m",
 }
 
 
