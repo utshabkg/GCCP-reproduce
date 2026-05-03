@@ -41,7 +41,12 @@ DEFAULT_SYSTEM_PROMPT = (
 
 
 class _DecoderBase:
-    """Shared infrastructure: model loading, truncation, single-token scoring."""
+    """Shared infrastructure: model loading, truncation, single-token scoring.
+
+    Pass a pre-loaded `(model, tokenizer)` via the `shared` kwarg to avoid
+    instantiating multiple copies of the same backbone (critical for
+    Qwen-2.5-72B-AWQ which barely fits on a single 48 GB GPU).
+    """
 
     def __init__(
         self,
@@ -50,19 +55,23 @@ class _DecoderBase:
         device_map: str = "auto",
         dtype: torch.dtype = torch.float16,
         system_prompt: Optional[str] = None,
+        shared: Optional[Tuple] = None,
     ) -> None:
         self.model_name = model_name
         self.max_doc_length = max_doc_length
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        if self.tokenizer.pad_token_id is None:
-            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+        if shared is not None:
+            self.model, self.tokenizer = shared
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            if self.tokenizer.pad_token_id is None:
+                self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype=dtype, device_map=device_map
-        )
-        self.model.eval()
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name, torch_dtype=dtype, device_map=device_map
+            )
+            self.model.eval()
 
     # --- text utilities ---
 

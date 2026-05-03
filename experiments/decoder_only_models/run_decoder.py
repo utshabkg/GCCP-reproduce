@@ -83,9 +83,16 @@ def main() -> None:
     print(f"queries: {len(qids)}")
 
     print(f"loading {args.model} ...")
+    # Load once and share between RG-YN and GCCP rankers. Critical for the
+    # 72B-AWQ model where two model copies would not fit in 48 GB GPU mem.
     rg_yn = DecoderOnlyRGYNRanker(args.model, max_doc_length=args.max_doc_length)
     gccp = DecoderOnlyGCCPRanker(
-        args.model, max_doc_length=args.max_doc_length, m=10, z=10, threshold=0.2
+        args.model,
+        max_doc_length=args.max_doc_length,
+        m=10,
+        z=10,
+        threshold=0.2,
+        shared=(rg_yn.model, rg_yn.tokenizer),
     )
 
     rg_results = {}
