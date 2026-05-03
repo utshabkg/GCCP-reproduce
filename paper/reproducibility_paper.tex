@@ -69,9 +69,12 @@ seven implementation details that the paper does not document but
 which silently determine whether reproduction succeeds, and we show
 that one of them -- the case of the relevance-target tokens -- alone
 collapses NDCG@10 from 0.66 to 0.24 on DL19. We further report that
-(i) on standard BM25 first stage, simple rank aggregation (Borda,
-Condorcet, Copeland) outperforms the paper's linear aggregation by
-$+1.1$~pts on DL19, (ii) replacing BM25 with an off-the-shelf E5
+(i) on the DL19 / Flan-T5-Large / BM25 cell that the paper's
+Section~4.4.1 implicitly relies on, Borda / Condorcet / Copeland
+outperform the paper's $\alpha{=}0.5$ linear aggregation by
+$+1.1$~pts NDCG@10; across a wider 8-cell sweep, however, Borda is
+on average tied with linear, so the original paper's reading
+(``aggregation method does not matter much'') generalizes, (ii) replacing BM25 with an off-the-shelf E5
 dense retriever lifts PAGC by $+1.5$ to $+4.2$~pts and exceeds the
 paper's best published number on both DL19 and DL20 with Flan-T5-XL,
 (iii) under a paired-bootstrap test (10{,}000 resamples) with
@@ -89,9 +92,9 @@ TREC-DL exception (\cite{long2025precise}: Top$=$0.6099 vs
 Spectral$=$0.6076) but at $\sim 4\times$ the gap; and (v) the
 contrastive-anchor mechanism transfers to chat-tuned decoder-only
 models -- with a critical implementation primer -- and Qwen-2.5-7B-Instruct
-on DL19 reaches PAGC NDCG@10 above our reproduced Flan-T5-XL number
-(0.7212 vs 0.7030, paired-bootstrap test pending T5-XL per-query
-score release; see Section~\ref{sec:decoder}).
+on DL19 reaches PAGC NDCG@10 competitive with our reproduced
+Flan-T5-XL ($0.7212$ vs $0.6939$; paired-bootstrap two-sided
+$p{=}0.125$, not significant on $n{=}43$).
 \end{abstract}
 
 \maketitle
@@ -617,10 +620,15 @@ Flan-T5-XL (3B):
 
 \begin{itemize}[leftmargin=1.5em,nosep]
     \item \textbf{Qwen-2.5-7B-Instruct is the strongest open
-          7B GCCP backbone we tested}: PAGC = 0.7212 on DL19, beating
-          Flan-T5-XL's 0.7030 by $+1.8$~pts and within $1$~pt of
-          Flan-UL2 (20B). On DL20 it sits between T5-Large and
-          T5-XL.
+          7B GCCP backbone we tested.} On DL19 PAGC, Qwen reaches
+          $0.7212$ vs Flan-T5-XL $0.6939$ (re-run with score saving;
+          the original paper-aligned T5-XL run reported $0.7030$).
+          A paired bootstrap (10{,}000 resamples, $n{=}43$) gives
+          $\Delta{=}{+}0.027$ with 95\% CI $[-0.007, +0.065]$ and
+          $p{=}0.125$ -- i.e., the $+0.027$ headline is within
+          run-to-run noise on the small DL19 test set. On DL20 Qwen
+          sits between T5-Large and T5-XL. The honest claim is
+          ``competitive with Flan-T5-XL,'' not ``beats it.''
     \item \textbf{LLaMA-3.1-8B-Instruct} is intermediate: PAGC is
           $0.6723$ / $0.6166$, comparable to Flan-T5-Large despite
           being 10$\times$ larger.
@@ -653,37 +661,63 @@ models.
 \subsection{Aggregation methods}
 \label{sec:agg}
 We compare the paper's equal-weight linear aggregation against an
-$\alpha$-weighted linear sweep, Borda count, Condorcet, and Copeland
-voting. Table~\ref{tab:agg} reports DL19 with Flan-T5-Large.
+$\alpha$-weighted linear sweep, and Borda / Condorcet / Copeland
+rank voting, across 8 (dataset $\times$ retrieval $\times$ model)
+cells. Table~\ref{tab:agg} reports the full sweep
+(Borda/Condorcet/Copeland coincide at $|R|=2$, a useful
+methodological note on the paper's Section~4.4.1).
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
 \small
-\begin{tabular}{lc}
+\begin{tabular}{lcccccc}
 \toprule
-\textbf{Aggregation method} & \textbf{NDCG@10} \\
+\textbf{Setting} & RG-YN only & GCCP only & lin $\alpha{=}0.5$ (paper) & lin $\alpha{=}0.25$ & lin $\alpha{=}0.75$ & Borda \\
 \midrule
-RG-YN only                            & 0.6634 \\
-GCCP only                             & 0.6341 \\
-Linear, $\alpha = 0.5$ (paper)        & 0.6852 \\
-Linear, $\alpha = 0.25$               & 0.6730 \\
-Linear, $\alpha = 0.75$               & 0.6848 \\
-Borda                                 & \textbf{0.6966} \\
-Condorcet                             & \textbf{0.6966} \\
-Copeland                              & \textbf{0.6966} \\
+DL19 / T5-Large / BM25       & 0.6634 & 0.6341 & 0.6852 & 0.6730 & 0.6848 & \textbf{0.6966} \\
+DL19 / T5-XL    / BM25       & 0.6737 & 0.6747 & \textbf{0.6939} & 0.6881 & 0.6933 & 0.6936 \\
+DL19 / T5-XL    / E5         & 0.6752 & 0.7090 & 0.7185 & \textbf{0.7267} & 0.7026 & 0.7154 \\
+DL20 / T5-Large / BM25       & 0.6121 & 0.6137 & 0.6507 & 0.6399 & 0.6488 & \textbf{0.6510} \\
+DL20 / T5-XL    / BM25       & 0.6512 & 0.6701 & 0.6725 & 0.6768 & 0.6675 & \textbf{0.6865} \\
+DL20 / T5-XL    / E5         & 0.6789 & 0.7069 & 0.7177 & \textbf{0.7199} & 0.7167 & 0.7113 \\
+BEIR-SciFact  / T5-XL / E5   & 0.6579 & 0.7026 & 0.7176 & \textbf{0.7238} & 0.6862 & 0.6915 \\
+BEIR-NFCorpus / T5-XL / E5   & 0.3712 & 0.3836 & 0.3884 & \textbf{0.3917} & 0.3817 & 0.3892 \\
+\midrule
+\textbf{Avg.\ (over 8 cells)} & 0.6105 & 0.6243 & 0.6431 & 0.6425 & 0.6353 & 0.6419 \\
 \bottomrule
 \end{tabular}
-\caption{Aggregation ablation on DL19 / Flan-T5-Large / BM25.}
+\caption{Aggregation ablation across 8 (dataset $\times$ retrieval $\times$ model)
+cells. Bold marks the best aggregation per cell among the four
+non-baseline rows. Borda, Condorcet, and Copeland are numerically
+identical at $|R|=2$.}
 \label{tab:agg}
-\end{table}
+\end{table*}
 
-The three rank-aggregation methods are numerically identical at
-$|R|=2$ (a useful methodological note for the paper's Section~4.4.1)
-and they outperform the linear default by $+1.1$~pts. On the E5 setup
-the optimal $\alpha$ is $0.25$ (more weight on GCCP), beating
-$\alpha = 0.5$ by $+0.8$~pts on DL19, $+0.2$~pts on DL20: the optimal
-$\alpha$ is sensitive to first-stage retrieval quality, and the paper's
-$\alpha = 0.5$ is sub-optimal in both regimes we tested.
+\paragraph{Findings (revised across the full sweep).}
+(i) \textbf{Borda is not consistently better than the paper's
+$\alpha{=}0.5$ linear:} it wins in 3/8 cells (DL19/T5-Large/BM25 by
+$+0.011$, DL20/T5-XL/BM25 by $+0.014$, DL20/T5-Large/BM25 by
+$+0.000$); the cell-mean over all 8 is essentially tied (0.6419 vs
+0.6431). The $+1.1$~pts gap on DL19/T5-Large/BM25 that we initially
+highlighted does not generalize.
+(ii) \textbf{$\alpha{=}0.25$ (more weight on GCCP) wins on every E5
+cell tested (4/4) and on DL20/T5-XL/BM25, but loses on BM25 setups
+with smaller models}; the cell-mean is 0.6425 vs 0.6431. The
+\emph{direction} of the optimal $\alpha$ is therefore sensitive to
+first-stage retrieval quality (E5 calls for more GCCP weight, BM25
+for more RG-YN weight), but the magnitude of the gap is small enough
+that $\alpha{=}0.5$ is a reasonable robust default.
+(iii) The rank-aggregation methods coincide at $|R|=2$, so the
+paper's discussion of Borda vs Condorcet vs Copeland in
+Section~4.4.1 of \cite{long2025precise} cannot meaningfully
+differentiate them at this scale; this is a methodological note
+rather than a substantive criticism.
+
+The aggregation choice is therefore not a strong lever, contrary to
+our initial reading of the DL19/T5-Large/BM25 cell. We retain the
+finding because it is replicable and because it falsifies a tempting
+sweeping claim, but we no longer present it as a deployment
+recommendation.
 
 \subsection{Anchor and parameter ablations}
 \label{sec:anchor-ablation}
@@ -881,10 +915,14 @@ practical importance:
           less when the candidate list is already clean.
     \item Decoder-only LLMs work with our chat-template adaptation
           (with a critical \texttt{`Passage '} primer for the GCCP
-          turn). \textbf{Qwen-2.5-7B-Instruct PAGC on DL19 (0.7212)
-          beats Flan-T5-XL (0.7030)}; LLaMA-3.1-8B is intermediate;
+          turn). \textbf{Qwen-2.5-7B-Instruct PAGC on DL19 ($0.7212$)
+          is competitive with our re-run Flan-T5-XL ($0.6939$);}
+          paired bootstrap gives $\Delta{=}{+}0.027$, 95\% CI
+          $[-0.007, +0.065]$, $p{=}0.125$ -- not significant on
+          $n{=}43$. LLaMA-3.1-8B is intermediate;
           Mistral-7B-Instruct-v0.3 underperforms. Backbone family
-          matters more than parameter count at the 7--8B scale.
+          matters at least as much as parameter count at the 7--8B
+          scale.
     \item NDCG@10 implementations are not interchangeable; using
           a hand-written routine instead of \texttt{pytrec\_eval}
           accounts for $\sim 2.5$~pts of our largest BEIR gap.
