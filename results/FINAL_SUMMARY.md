@@ -39,12 +39,14 @@ Recovered from author's code; each fails silently and the first two together dro
 | Document truncation       | -     | 128 tokens        | Medium   |
 
 ### 3. Statistical significance (paper has none)
-Paired bootstrap (1000 resamples) across 13 (dataset × retrieval × model) settings:
-- **GCCP-alone vs RG-YN:** significant at p<0.05 in only **3/13** settings (BEIR-SciFact, BEIR-NFCorpus, DL19/Qwen-2.5-7B). Not significant in 10/13.
-- **PAGC vs GCCP:** significant in **9/13**, including all six DL20-BM25 settings at p<0.05.
-- Implication: GCCP's value lives in the aggregation step, not in GCCP itself.
+Paired bootstrap (**10,000 resamples**) with **Holm-Bonferroni
+correction** across 13 (dataset × retrieval × model) settings:
+- **GCCP-alone vs RG-YN:** significant at $p_\text{Holm}<0.05$ in **0/13** settings. Three settings (BEIR-SciFact, BEIR-NFCorpus, DL19/Qwen-2.5-7B) are significant at raw p<0.05 but lose under Holm.
+- **PAGC vs GCCP:** significant at $p_\text{Holm}<0.05$ in **4/13** settings, all of them BM25 setups.
+- **PAGC vs RG-YN:** significant at $p_\text{Holm}<0.05$ in 5/13, including both BEIR-E5 sets where statistical power is high.
+- Implication: GCCP's value lives in the aggregation step, not in GCCP alone. Note: power is limited on TREC-DL (n=43/54), so "not significant" is consistent with both no effect and a small undetectable effect.
 
-### 4. Simple anchors beat spectral MDS (full DL19/DL20, T5-Large)
+### 4. Simple anchors compete with spectral MDS on TREC-DL (full DL19/DL20, T5-Large)
 | Anchor builder | DL19 GCCP | DL19 PAGC | DL20 GCCP | DL20 PAGC |
 |---|---|---|---|---|
 | Random passage | 0.6394 | 0.6945 | 0.6103 | 0.6474 |
@@ -52,7 +54,7 @@ Paired bootstrap (1000 resamples) across 13 (dataset × retrieval × model) sett
 | Top-3 composite| 0.6410 | 0.6947 | **0.6280** | **0.6572** |
 | Spectral MDS (paper) | 0.6341 | 0.6852 | 0.6137 | 0.6507 |
 
-The paper's costly spectral MDS step adds no value over a one-line top-1 BM25 anchor on DL19; on DL20 a top-3 sentence-interleaved composite is best.
+On TREC-DL with GCCP-alone the costly spectral MDS adds no value over a one-line top-1 BM25 anchor. **The paper itself reports the same direction** (Table 5: GCCP+Top 0.6099 vs GCCP+Spectral 0.6076 averaged over DL19+DL20); we replicate the direction at ~4× the magnitude (+0.008 vs paper's +0.002). On BEIR the paper claims spectral wins; we have not yet reproduced that ablation.
 
 ### 5. Aggregation method matters
 On DL19 / Flan-T5-Large / BM25:

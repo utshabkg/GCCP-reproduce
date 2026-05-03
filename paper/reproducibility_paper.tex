@@ -82,12 +82,16 @@ significantly different from RG-YN at $p_{\text{Holm}}<0.05$ in
 but all three fall out under Holm); PAGC vs GCCP is significant in
 4/13 (all BM25), and PAGC vs RG-YN in 5/13 -- the statistical signal
 is in the aggregation step, not in GCCP alone, and
-(iv) a one-line ``top-1 BM25 passage'' anchor outperforms the paper's
-spectral multi-document summarization anchor on full DL19 by
-$+1.7$~pts GCCP, contradicting the paper's Table~5, and (v) the
+(iv) on full DL19 with Flan-T5-Large, a one-line ``top-1 BM25 passage''
+anchor matches the paper's spectral multi-document summarization on
+GCCP+PAGC -- consistent in direction with the paper's own Table~5
+TREC-DL exception (\cite{long2025precise}: Top$=$0.6099 vs
+Spectral$=$0.6076) but at $\sim 4\times$ the gap; and (v) the
 contrastive-anchor mechanism transfers to chat-tuned decoder-only
 models -- with a critical implementation primer -- and Qwen-2.5-7B-Instruct
-beats Flan-T5-XL on DL19 PAGC.
+on DL19 reaches PAGC NDCG@10 above our reproduced Flan-T5-XL number
+(0.7212 vs 0.7030, paired-bootstrap test pending T5-XL per-query
+score release; see Section~\ref{sec:decoder}).
 \end{abstract}
 
 \maketitle
@@ -710,15 +714,35 @@ strongest anchor in our reproduction.}}
 \label{tab:anchor-full}
 \end{table}
 
-\paragraph{Finding.} On DL19, Top-1 BM25 (a one-line anchor builder)
-beats spectral MDS by $+1.7$~pts on GCCP and $+1.0$~pt on PAGC. On
-DL20, a Top-3 sentence-interleaved composite wins by $+1.4$~pts and
-$+0.7$~pts. \textbf{Even a randomly chosen passage beats spectral
-MDS on PAGC for both datasets.} This contradicts the original paper's
-Table~5, which claims spectral MDS is the strongest. We have not been
-able to reconcile the discrepancy from the released code; we report
-both findings and flag this as the most actionable open question for
-future work on PAGC.
+\paragraph{Finding (replicates paper's TREC-DL exception, magnifies it).}
+On DL19, Top-1 BM25 (a one-line anchor builder) beats spectral MDS
+by $+1.7$~pts on GCCP and $+1.0$~pt on PAGC. On DL20, a Top-3
+sentence-interleaved composite wins by $+1.4$~pts and $+0.7$~pts. On
+the (DL19$+$DL20)/2 average that the paper uses, our GCCP$+$Top-1 is
+$0.6321$ vs GCCP$+$Spectral $0.6239$, a $+0.008$ gap.
+
+The paper itself reports the same direction on TREC DL (Table 5 of
+\cite{long2025precise}): GCCP$+$Top $= 0.6099$, GCCP$+$Spectral
+$= 0.6076$, a $+0.002$ gap, and explicitly notes: \emph{``The Top
+method, while also performing well, generally falls slightly short
+of the Spectral method, except in the GCCP model on the TREC DL
+benchmark, where it marginally outperforms the Spectral method.''}
+Our reproduction therefore \emph{confirms} the paper's reported
+TREC-DL exception, but we find the magnitude $\sim 4\times$ larger
+(+0.008 vs the paper's +0.002). On the (DL19$+$DL20)/2 PAGC average
+the paper's authors report Spectral$>$Top across all PAGC variants
+in their Table 5; we have not yet replicated the BEIR portion of
+their anchor ablation, which is where they observe the larger
+Spectral$>$Top gap.
+
+\paragraph{Implication.} The result is not that spectral MDS does
+not work; it is that on TREC DL with GCCP-alone, the cheapest
+possible anchor (the top-1 BM25 candidate, no clustering, no MDS) is
+already as good. The case for spectral MDS rests on its BEIR
+performance, which we have not yet reproduced. We therefore
+explicitly flag the BEIR anchor ablation as the natural next step
+for this line of work; without it, the engineering cost of running
+spectral MDS is hard to justify on TREC DL alone.
 
 We additionally sweep $m \in \{5, 10, 15, 20\}$, $z \in \{5, 10, 15, 20\}$,
 and $\theta \in \{0.1, 0.2, 0.3, 0.4\}$. PAGC NDCG@10 varies by
@@ -841,10 +865,15 @@ practical importance:
           RG-YN is significant in 5/13 (including both high-$n$ BEIR
           sets). The paper's value lives in the aggregation step,
           not in GCCP alone.
-    \item A one-line ``top-1 BM25 passage'' anchor outperforms the
-          paper's spectral multi-document summarization on full
-          DL19/DL20 with Flan-T5-Large; spectral MDS is
-          \emph{not} the strongest anchor in our reproduction.
+    \item On full DL19/DL20 with Flan-T5-Large, a one-line ``top-1
+          BM25 passage'' anchor matches or slightly beats the
+          paper's spectral multi-document summarization anchor.
+          The paper itself notes this exception on TREC DL
+          (\cite{long2025precise} Table~5: GCCP+Top $0.6099$ vs
+          GCCP+Spectral $0.6076$); we replicate the direction at
+          $\sim 4\times$ the magnitude. Spectral MDS may still be
+          the strongest anchor on BEIR (we have not yet reproduced
+          that ablation).
     \item Replacing BM25 with E5 dense retrieval lifts the entire
           pipeline by 2--4~pts NDCG@10 on TREC-DL and already
           exceeds the paper's published Flan-T5-XL PAGC numbers
