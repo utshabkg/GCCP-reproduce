@@ -390,15 +390,49 @@ literature~\cite{breuer2020repro,lin2022leveraging,lin2018msmarco};
 our contribution here is a concrete recent instance with a published
 catalogue.
 
-\paragraph{DL20-T5-Large residual.} Even after all seven fixes,
-T5-Large on DL20 retains a $5.7\%$ PAGC gap. We additionally ported
-the authors' exact NLTK-based sentence segmentation (with their hybrid
-``200 chars or first 128'' per-document length cap and absolute-Fiedler
-minority-side sentence selection); this lifts our DL20 GCCP by
-$+1.2$~pts and PAGC by $+0.6$~pts, leaving a residual $5.0\%$. The
-gap collapses to $2.0\%$ at UL2, so the method is robust at scale;
-small-model reproduction is brittle to undisclosed segmentation
-details.
+\paragraph{DL20 / Flan-T5-Large residual gap (5.7\% PAGC).}
+Even after all seven fixes above, T5-Large on DL20 retains a
+$5.7\%$ PAGC gap (our $0.6515$ vs paper $0.6910$). This is our
+largest residual reproduction discrepancy and we treat it as a
+finding in its own right. We systematically eliminated candidate
+causes:
+
+\begin{itemize}[leftmargin=1.5em,nosep]
+    \item \textbf{Eigenvalue solver.} Switching from sparse
+          \texttt{scipy.sparse.linalg.eigsh} to dense
+          \texttt{numpy.linalg.eigh} (the authors' choice) moves PAGC
+          by $0.1$~pt -- not the explanation.
+    \item \textbf{Sentence segmentation.} Porting the authors'
+          exact NLTK-based segmentation with their hybrid
+          ``200 chars or first 128'' per-document length cap and
+          absolute-Fiedler minority-side selection lifts our
+          DL20 GCCP by $+1.2$~pts and PAGC by $+0.6$~pts, leaving
+          a residual $5.0\%$. About one-eighth of the original
+          gap is therefore segmentation; the rest is not.
+    \item \textbf{Seed variance.} The authors set
+          \texttt{random.seed(929)} (undocumented in the paper). We
+          re-ran T5-Large/DL20/BM25 with five seeds
+          $\{0, 42, 929, 12345, 2023\}$. The pipeline is essentially
+          deterministic given fixed inputs (TF-IDF, spectral
+          decomposition, T5 forward pass, NDCG via pytrec\_eval);
+          seed-to-seed variance on PAGC NDCG@10 is $\le 0.01\%$ in
+          our sweep. Seed is therefore not the explanation.
+    \item \textbf{Model scale.} The gap is monotonic in scale:
+          $5.7\%$ at T5-Large (780M) $\to$ $4.7\%$ at T5-XL (3B)
+          $\to$ $2.0\%$ at UL2 (20B). The PAGC method itself is
+          robust at scale; the small-model reproduction is what is
+          brittle.
+\end{itemize}
+
+\paragraph{What we cannot explain.} About 85\% of the original
+$5.7\%$ gap remains unattributed even with the authors' exact
+sentence-segmentation rule, deterministic seeding, and a faithful
+prompt audit. Plausible remaining causes include FP16 numerical
+non-determinism on a different GPU (the original code targets a 4×A6000
+machine), undisclosed BEIR/DL20 query filtering, or an undocumented
+preprocessing step we have not yet found. We have not contacted the
+original authors; doing so is the natural next step. We report this
+gap as is, rather than tune it away with cosmetic adjustments.
 
 % ============================================================
 \section{Statistical Significance}
