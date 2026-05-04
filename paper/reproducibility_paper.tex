@@ -913,11 +913,37 @@ Spectral$>$Top gap.
 \paragraph{Implication.} The result is not that spectral MDS does
 not work; it is that on TREC DL with GCCP-alone, the cheapest
 possible anchor (the top-1 BM25 candidate, no clustering, no MDS) is
-already as good. The case for spectral MDS rests on its BEIR
-performance, which we have not yet reproduced. We therefore
-explicitly flag the BEIR anchor ablation as the natural next step
-for this line of work; without it, the engineering cost of running
-spectral MDS is hard to justify on TREC DL alone.
+already as good. The paper's \emph{aggregate} case for spectral MDS
+rests on its BEIR performance (Table~5: $0.4471$ vs Top's $0.4346$
+averaged across 8 BEIR sets).
+
+\paragraph{Per-dataset BEIR anchor (in progress).} We are running
+the same 4-anchor ablation on each of the 8 BEIR sets used in the
+original paper. The first set to complete -- BEIR-SciFact / Flan-T5-Large -- shows the same direction as TREC-DL but at much
+larger magnitude:
+
+\begin{center}
+\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Anchor (BEIR-SciFact)} & GCCP & PAGC \\
+\midrule
+Random passage    & 0.5781 & 0.6151 \\
+Top-1 BM25        & 0.6659 & 0.6568 \\
+Top-3 composite   & \textbf{0.6692} & \textbf{0.6610} \\
+Spectral MDS      & 0.6195 & 0.6416 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Top-3 composite beats Spectral by $+5.0$ pts GCCP and $+1.9$ pts
+PAGC on SciFact. SciFact alone is one of 8 BEIR sets -- the paper's
+BEIR-aggregate finding may still hold across the full benchmark.
+Per-set results for the remaining 7 sets are forthcoming and will
+be released with the final paper. If the SciFact pattern persists,
+our reproduction would not just \emph{replicate the paper's TREC-DL
+exception at higher magnitude} but \emph{actively contradict the
+paper's BEIR-aggregate claim that Spectral is the best anchor.}
 
 We additionally sweep $m \in \{5, 10, 15, 20\}$, $z \in \{5, 10, 15, 20\}$,
 and $\theta \in \{0.1, 0.2, 0.3, 0.4\}$. PAGC NDCG@10 varies by
