@@ -22,6 +22,7 @@ venv/
 # Data (large files)
 data/corpus/
 data/bm25_runs/*.tsv
+data/beir_e5_pyserini_dump/
 *.pkl
 *.pt
 
