@@ -178,15 +178,21 @@ def main() -> None:
         summary[label] = result
 
     # ---------------------- Holm-Bonferroni correction --------------------
-    # Apply across ALL pairwise comparisons across ALL settings to avoid
-    # multiple-comparison inflation. We separately correct each of the three
-    # comparison families (PAGC vs RG-YN, PAGC vs GCCP, GCCP vs RG-YN) so a
-    # significant family-conditional finding is preserved even if other
-    # families have many positives.
+    # Apply across the *primary* settings only. Seed-sweep variants and the
+    # authorMDS sentence-segmentation cell are auxiliary robustness checks
+    # that re-test the same DL20/T5-Large data; including them in the Holm
+    # family would inflate k without adding independent hypotheses.
+    def _is_primary(label: str) -> bool:
+        if "seed" in label:
+            return False
+        if "authorMDS" in label:
+            return False
+        return True
+
     families = {"PAGC vs RG-YN", "PAGC vs GCCP", "GCCP vs RG-YN"}
     for fam in families:
         labels = [(lab, summary[lab]["comparisons"][fam]) for lab in summary
-                  if fam in summary[lab]["comparisons"]]
+                  if fam in summary[lab]["comparisons"] and _is_primary(lab)]
         ps = [c["p_value"] for _, c in labels]
         if not ps:
             continue
