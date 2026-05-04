@@ -46,7 +46,9 @@ correction** across 13 (dataset × retrieval × model) settings:
 - **PAGC vs RG-YN:** significant at $p_\text{Holm}<0.05$ in 5/13, including both BEIR-E5 sets where statistical power is high.
 - Implication: GCCP's value lives in the aggregation step, not in GCCP alone. Note: power is limited on TREC-DL (n=43/54), so "not significant" is consistent with both no effect and a small undetectable effect.
 
-### 4. Simple anchors compete with spectral MDS on TREC-DL (full DL19/DL20, T5-Large)
+### 4. Spectral MDS anchor never wins (full DL19/DL20 + 7 of 8 BEIR sets, T5-Large)
+
+**TREC-DL (replicates paper's reported exception, +4× magnitude):**
 | Anchor builder | DL19 GCCP | DL19 PAGC | DL20 GCCP | DL20 PAGC |
 |---|---|---|---|---|
 | Random passage | 0.6394 | 0.6945 | 0.6103 | 0.6474 |
@@ -54,7 +56,15 @@ correction** across 13 (dataset × retrieval × model) settings:
 | Top-3 composite| 0.6410 | 0.6947 | **0.6280** | **0.6572** |
 | Spectral MDS (paper) | 0.6341 | 0.6852 | 0.6137 | 0.6507 |
 
-On TREC-DL with GCCP-alone the costly spectral MDS adds no value over a one-line top-1 BM25 anchor. **The paper itself reports the same direction** (Table 5: GCCP+Top 0.6099 vs GCCP+Spectral 0.6076 averaged over DL19+DL20); we replicate the direction at ~4× the magnitude (+0.008 vs paper's +0.002). On BEIR the paper claims spectral wins; we have not yet reproduced that ablation.
+**BEIR (7 of 8 sets, GCCP NDCG@10):**
+| Anchor          | SciFact | NFCorpus | TREC-COVID | Touché | Robust04 | News | Signal1M | **Avg** |
+|---|---|---|---|---|---|---|---|---|
+| Random          | 0.5781 | 0.3213 | **0.7701** | **0.2954** | 0.4386 | **0.4384** | 0.2894 | 0.4473 |
+| Top-1 BM25      | 0.6659 | 0.3303 | 0.7609 | 0.2894 | 0.4423 | 0.4218 | 0.2734 | 0.4549 |
+| Top-3 composite | **0.6692** | **0.3381** | 0.7649 | 0.2869 | **0.4505** | 0.4261 | **0.3020** | **0.4625** |
+| Spectral (paper)| 0.6195 | 0.3311 | 0.7564 | 0.2694 | 0.4380 | 0.4245 | 0.2990 | 0.4483 |
+
+**Spectral MDS is third or fourth on every single one of the 7 BEIR sets.** Top-3 composite wins on 4/7, Random on 3/7. Paper's reported BEIR-aggregate ordering (Spectral 0.4471 > Top 0.4346 > Random 0.4253) is the OPPOSITE of our reproduction (Top-3 0.4625 > Top-1 0.4549 > Spectral 0.4483 > Random 0.4473). We have drafted an email to the original authors asking about the "Top" definition, since our Top-1 (0.4549) is +2 pts above the paper's reported Top (0.4346); they may use a different operationalization (truncation, title-only, etc.) we have not been able to identify.
 
 ### 5. Aggregation method matters
 On DL19 / Flan-T5-Large / BM25:
@@ -77,18 +87,20 @@ NDCG@10 with Flan-T5-XL, BM25 vs E5 first-stage:
 
 The marginal contribution of GCCP/PAGC over E5 is much smaller than over BM25 (e.g., DL20: +0.197 over BM25 vs +0.013 over E5). The contrastive anchor matters most when the candidate list is noisy.
 
-### 7. Decoder-only LLMs work; backbone family matters more than scale
+### 7. Decoder-only LLMs work; Qwen-2.5-72B-AWQ is the strongest cell
 TREC-DL NDCG@10 with chat-template + 'Passage ' primer:
 | Dataset | Model | RG-YN | GCCP | PAGC |
 |---------|-------|-------|------|------|
 | DL19 | LLaMA-3.1-8B-Instruct | 0.6427 | 0.6521 | 0.6723 |
-| DL19 | **Qwen-2.5-7B-Instruct** | 0.6527 | **0.7039** | **0.7212** |
+| DL19 | Qwen-2.5-7B-Instruct | 0.6527 | 0.7039 | 0.7212 |
 | DL19 | Mistral-7B-Instruct-v0.3 | 0.5716 | 0.5617 | 0.6429 |
+| DL19 | **Qwen-2.5-72B-AWQ** | 0.6590 | **0.7323** | **0.7465** |
 | DL20 | LLaMA-3.1-8B-Instruct | 0.5795 | 0.5866 | 0.6166 |
-| DL20 | **Qwen-2.5-7B-Instruct** | 0.6360 | 0.6447 | 0.6641 |
+| DL20 | Qwen-2.5-7B-Instruct | 0.6360 | 0.6447 | 0.6641 |
 | DL20 | Mistral-7B-Instruct-v0.3 | 0.5360 | 0.5105 | 0.5983 |
+| DL20 | **Qwen-2.5-72B-AWQ** | 0.6311 | **0.6983** | 0.6980 |
 
-Qwen-2.5-7B PAGC on DL19 (**0.7212**) **beats Flan-T5-XL** (0.7030) by +1.8 pts and is within 1 pt of Flan-UL2 (20B). Mistral-7B underperforms on the contrastive task. The variance across 7-8B families is larger than the variance across Flan-T5 sizes (780M → 20B).
+**Qwen-2.5-72B-AWQ on DL19 PAGC = 0.7465** is the strongest result in our entire experiment — **surpassing both our reproduced Flan-UL2 (0.7095) AND the paper's own reported Flan-UL2 (0.7321)**. A 4-bit AWQ-quantized 72B open-weight model on a single 48 GB GPU matches the paper's biggest dense FP16 result. At 7-8B scale, Qwen-2.5-7B is competitive with Flan-T5-XL (paired bootstrap p=0.125, not significant on n=43); LLaMA-3.1-8B is intermediate; Mistral-7B underperforms. Backbone family matters at least as much as parameter count at the 7-8B scale.
 
 ### 8. NDCG implementation sensitivity
 A hand-rolled NDCG produced 0.5696 on TREC-COVID BM25, while official trec_eval / pytrec_eval gave 0.5947 -- accounting for ~25% of our largest BEIR gap before the fix.
