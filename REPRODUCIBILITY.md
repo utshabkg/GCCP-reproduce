@@ -77,22 +77,22 @@ All models loaded via HuggingFace `transformers`. FP16 on GPU.
 | meta-llama/Meta-Llama-3.1-8B-Instruct | 8B | llama-3.1      | local snapshot at `/media/20TB/shared/models/meta-llama/Llama-3.1-8B-Instruct/` |
 | Qwen/Qwen2.5-7B-Instruct           | 7B    | qwen-license   | local snapshot at `/media/20TB/shared/models/qwen/Qwen2.5-7B-Instruct/`   |
 | mistralai/Mistral-7B-Instruct-v0.3 | 7B    | apache-2.0     | local snapshot at `/media/20TB/shared/models/mistralai/Mistral-7B-Instruct-v0.3/` |
-| ~~Qwen/Qwen2.5-72B-Instruct-AWQ~~  | 72B   | qwen-license   | local; **dropped from final results** -- see note below                   |
+| Qwen/Qwen2.5-72B-Instruct-AWQ      | 72B   | qwen-license   | local snapshot at `/media/20TB/shared/models/qwen/Qwen2.5-72B-Instruct-AWQ/` |
 
 LLaMA-3.1-8B-Instruct is gated on Hugging Face but a snapshot was
 already present on local university storage; we ran it from the local
 snapshot under `TRANSFORMERS_OFFLINE=1` rather than re-downloading.
-All four 7--8B decoder-only runs (LLaMA, Qwen, Mistral, $\times$ DL19/DL20)
-were obtained from these local snapshots.
+All four 7--8B decoder-only runs (LLaMA, Qwen-7B, Mistral, $\times$
+DL19/DL20) were obtained from these local snapshots.
 
-\textbf{Qwen-2.5-72B-AWQ stretch goal.} We attempted the AWQ-quantized
-72B as a scaling data point. Loading the model requires the
-\texttt{autoawq} package, whose 0.2.7+ versions force a PyTorch
-upgrade to $\geq 2.5.1$ that breaks the rest of the gccp-decoder
-environment (CUDA build incompatibility). Older autoawq versions
-need \texttt{transformers.models.qwen3} which is unavailable in our
-pinned transformers 4.49. We backed the change out and report 72B as
-future work.
+**Qwen-2.5-72B-AWQ.** Loaded from a local snapshot via a separate
+`gccp-decoder-large` conda env (torch 2.5.1, transformers 4.51.3,
+autoawq 0.2.9). The standard `gccp-decoder` env was kept on its
+older transformers/autoawq pin to avoid disrupting the 7--8B
+runs; this isolation pattern lets the 72B run share the
+`DecoderOnlyRGYNRanker` / `DecoderOnlyGCCPRanker` codebase via a
+shared `(model, tokenizer)` kwarg so both rankers fit on a single
+48 GB GPU. DL19 PAGC = 0.7465, DL20 PAGC = 0.6980.
 
 ---
 
@@ -177,13 +177,20 @@ expected file layout is documented in [PLAN.md](PLAN.md).
 
 ## 8. Negative / Partial Results (kept on the record)
 
-- **DL20 / Flan-T5-Large gap (5.7% PAGC) is not fully closed** even
-  with a faithful port of the author's NLTK + 200/128 hybrid sentence
-  segmentation. Our best effort closes ~0.7 pts; the rest is
-  unexplained. Not hidden from the paper -- we treat it as a finding.
+- **DL20 / Flan-T5-Large "gap" was a phantom.** Our PAGC of 0.6515
+  was compared against a paper-side number of 0.6910 in earlier
+  drafts; that 0.6910 does not appear in the original paper.
+  Re-extracting Table 1 directly gives 0.6281, which means our
+  reproduction *exceeds* the paper on this cell by +3.7%. We
+  retained the diagnostic work (eigenvalue solver, NLTK
+  sentence segmentation port, 5-seed determinism check) because it
+  documents real pipeline behaviour, but the gap it was chasing
+  did not exist.
 
-- **LLaMA-3.1-8B-Instruct** could not be downloaded without HF auth.
-  Replaced with Mistral-7B-Instruct-v0.3.
+- **LLaMA-3.1-8B-Instruct** is gated on Hugging Face. We ran it
+  from a local pre-existing snapshot under `TRANSFORMERS_OFFLINE=1`,
+  not from a fresh download. Mistral-7B-Instruct-v0.3 was added as
+  an additional decoder-only model, not as a substitute.
 
 - **Spectral MDS does not beat top-1 BM25 anchor** on full DL19/DL20
   with Flan-T5-Large under our reproduction. The paper claims it

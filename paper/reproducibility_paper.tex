@@ -93,10 +93,11 @@ $p_{\text{Holm}}{=}0.032$) -- so aggregating with RG-YN under a strong
 dense retriever can hurt rather than help. PAGC vs RG-YN is
 Holm-significant in 12/22 settings (all positive). The aggregation
 step's value is not uniform across (model, retrieval) regimes, and
-(iv) the spectral MDS anchor is consistently mediocre on the
-8 BEIR sets we ran anchor ablations on -- it never wins
-(Top-3 wins 5/8, Random wins 3/8) but also never finishes last,
-contradicting the paper's reported BEIR-aggregate ordering; (v) the contrastive-anchor mechanism
+(iv) the spectral MDS anchor never wins on any of the 8 BEIR sets
+we ran anchor ablations on -- Top-3 wins 5/8, Random wins 3/8,
+and Spectral finishes \emph{last} on 3/8 sets (TREC-COVID,
+Touch\'e-2020, Robust04), contradicting the paper's reported
+BEIR-aggregate ordering; (v) the contrastive-anchor mechanism
 transfers to large quantized decoder-only models -- Qwen-2.5-72B-Instruct (4-bit AWQ on a single 48~GB GPU) reaches PAGC NDCG@10
 $=0.7465$ on DL19, surpassing both our reproduced Flan-UL2 (0.7095)
 and the paper's own reported Flan-UL2 (0.7206 from Table~1
@@ -185,10 +186,10 @@ This paper makes the following contributions:
           paper's $\alpha{=}0.5$ linear baseline is statistically
           tied with Borda voting (cell-mean 0.6556 vs 0.6544); the
           $+1.1$~pts gap on a single DL19/T5-Large/BM25 cell does
-          not generalize. Spectral MDS anchor construction is
-          consistently mediocre across all 8 BEIR sets (third or
-          fourth in every set we tested) -- a stronger negative
-          finding than the paper's TREC-DL exception.
+          not generalize. The spectral MDS anchor never wins on any
+          of the 8 BEIR sets we tested and finishes \emph{last} on
+          3/8 (TREC-COVID, Touch\'e-2020, Robust04) -- a stronger
+          negative finding than the paper's TREC-DL exception.
 \end{itemize}
 
 All code, per-query scores, statistical tests, and run logs are
@@ -281,11 +282,14 @@ SciFact, Signal1M, TREC-News, Robust04, NFCorpus.
 
 \subsection{Models}
 Three encoder-decoder Flan models from the original paper:
-Flan-T5-Large (780M), Flan-T5-XL (3B), and Flan-UL2 (20B). Two
-decoder-only models in our extension: LLaMA-3.1-8B-Instruct and
-Qwen-2.5-7B-Instruct. All models run in FP16. Inference is sequential
-(no batching), matching the original code; we discuss latency in
-Section~\ref{sec:efficiency}.
+Flan-T5-Large (780M), Flan-T5-XL (3B), and Flan-UL2 (20B). Four
+decoder-only models in our extension (Section~\ref{sec:decoder}):
+LLaMA-3.1-8B-Instruct, Qwen-2.5-7B-Instruct, Mistral-7B-Instruct-v0.3,
+and Qwen-2.5-72B-Instruct-AWQ (4-bit AWQ-quantized, on a single
+48~GB GPU). The Flan and 7--8B decoder-only models run in FP16; the
+72B-AWQ variant runs at 4-bit weight precision with FP16 activations.
+Inference is sequential (no batching), matching the original code;
+we discuss latency in Section~\ref{sec:efficiency}.
 
 % ============================================================
 \section{Reproduction Results}
@@ -1067,23 +1071,23 @@ BM25, varying only the anchor builder. ``Ours avg.'' is the simple
 mean across 8 datasets; ``Paper avg.'' is the corresponding number
 from \cite{long2025precise} Table~5 (paper does not include a
 ``Top-3 composite'' baseline). \textbf{Spectral never wins on any
-of the 8 sets, but also never lands last -- it is consistently
-the second or third anchor across sets.} Top-3 composite wins 5/8
-(SciFact, NFCorpus, Robust04, Signal1M, DBPedia); Random wins 3/8
-(TREC-COVID, TREC-News, Touch\'e-2020).}
+of the 8 sets and finishes last on 3/8 (TREC-COVID, Touch\'e-2020,
+Robust04); on the other 5 it sits in the middle of the four anchors.}
+Top-3 composite wins 5/8 (SciFact, NFCorpus, Robust04, Signal1M,
+DBPedia); Random wins 3/8 (TREC-COVID, TREC-News, Touch\'e-2020).}
 \label{tab:beir-anchor}
 \end{table*}
 
 \paragraph{Finding.} On TREC-DL we replicated the paper's reported
 exception (GCCP+Top slightly beats GCCP+Spectral); we now find
 that on \emph{every single one of the 8 BEIR sets we ran},
-Spectral MDS loses to at least one simpler anchor, but also
-\emph{never finishes last} -- it is consistently a middle-of-the-pack
-choice. The picture is therefore ``Spectral is consistently
-mediocre across sets,'' not ``Spectral is bad.'' The aggregate
+Spectral MDS loses to at least one simpler anchor, and
+\emph{finishes last on 3/8 sets} (TREC-COVID, Touch\'e-2020, and
+Robust04 -- where the cheapest possible anchor, Random, beats it).
+On the other 5 sets it lands second or third. The aggregate
 ordering on our 8 sets (Top-3 $>$ Top-1 $>$ Spectral $>$ Random)
-is nonetheless the \emph{opposite} of the paper's reported
-aggregate (Spectral $>$ Top $>$ Random).
+is the \emph{opposite} of the paper's reported aggregate (Spectral
+$>$ Top $>$ Random).
 
 \paragraph{Reconciliation.} On a per-anchor basis, our reproduction
 matches the paper closely on Spectral (ours $0.4446$ vs paper
@@ -1233,12 +1237,14 @@ regime, but UL2 ($\sim 10\times$) is an order of magnitude slower.}
 % ============================================================
 \label{sec:discussion}
 
-\paragraph{The reproduction succeeded, broadly.} Within $2$--$4\%$
-NDCG@10 across $\sim 50$ cells, with the largest gap traced to
-specific sentence-segmentation choices. We exceed the paper on
-multiple cells. The method's central claim -- that an anchor-based
-contrastive prompt, aggregated with RG-YN, yields a strong pointwise
-re-ranker -- holds.
+\paragraph{The reproduction succeeded, broadly.} Mean absolute
+NDCG@10 gap of $1.6\%$ on the six TREC-DL cells and $1.9$--$4.5\%$
+on the 24 BEIR cells (across three model scales). We exceed the
+paper on five cells, including a $+3.7\%$ over-shoot on
+DL20/Flan-T5-Large that earlier drafts had recorded as a deficit
+(Section~\ref{sec:undocumented}). The method's central claim --
+that an anchor-based contrastive prompt, aggregated with RG-YN,
+yields a strong pointwise re-ranker -- holds.
 
 \paragraph{The lessons are about practice, not the method.} Seven
 undocumented details, each fail-silent, between paper text and
@@ -1320,16 +1326,16 @@ practical importance:
           Aggregation is unambiguously useful only under BM25;
           under E5 it is roughly a wash and on at least one
           large-$n_q$ set it actively hurts.
-    \item The \textbf{spectral MDS anchor is consistently mediocre}
-          on the 8 BEIR sets we ran anchor ablations on
-          (Table~\ref{tab:beir-anchor}): it never wins on any set,
-          but it also never finishes last -- Top-3 wins 5/8,
-          Random wins 3/8, and Spectral lands in the middle of the
-          four anchors on every set. Aggregate ordering across all
-          8 sets is Top-3 (0.4581) $>$ Top-1 (0.4512) $>$ Spectral
-          (0.4446) $>$ Random (0.4423), the \emph{opposite} of the
-          paper's reported aggregate Spectral (0.4471) $>$ Top
-          (0.4346) $>$ Random (0.4253). Our Spectral number matches
+    \item The \textbf{spectral MDS anchor never wins} on any of the
+          8 BEIR sets we ran anchor ablations on
+          (Table~\ref{tab:beir-anchor}) and \emph{finishes last on
+          3/8} (TREC-COVID, Touch\'e-2020, Robust04, where Random
+          beats it). On the remaining 5 sets it lands second or
+          third. Top-3 wins 5/8 and Random wins 3/8. Aggregate
+          ordering across all 8 sets is Top-3 (0.4581) $>$ Top-1
+          (0.4512) $>$ Spectral (0.4446) $>$ Random (0.4423), the
+          \emph{opposite} of the paper's reported aggregate
+          Spectral (0.4471) $>$ Top (0.4346) $>$ Random (0.4253). Our Spectral number matches
           the paper's within $0.003$; our Top and Random are
           systematically $+0.017$ above the paper's, suggesting
           different operationalizations -- we sent the original
