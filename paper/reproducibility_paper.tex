@@ -1,5 +1,4 @@
 \documentclass[sigconf]{acmart}
-\usepackage{amsmath, amssymb}
 
 % ACM acmart sigconf template. Same template family as SIGIR and
 % CIKM (both use acmart sigconf); confirm conference-specific
@@ -15,8 +14,11 @@
 \setcopyright{none}
 \copyrightyear{2026}
 \acmYear{2026}
-\acmConference[Reproducibility]{Reproducibility Track}{2026}{}
-\acmBooktitle{Reproducibility Track}
+% TODO before camera-ready: replace with the venue-specific
+% \acmConference{} fields. Current placeholder is sufficient for
+% submission; the publisher provides the exact strings on acceptance.
+\acmConference[Reproducibility Track]{Reproducibility Track Submission}{2026}{}
+\acmBooktitle{Reproducibility Track Submission, 2026}
 
 \begin{document}
 
@@ -42,32 +44,35 @@
 \orcid{0000-0002-6729-1346}
 \email{shubham.chatterjee@mst.edu}
 
-\renewcommand{\shortauthors}{Ghosh, David, and Chatterjee}
+\renewcommand{\shortauthors}{Ghosh and Chatterjee}
 
 \begin{abstract}
 We reproduce and audit GCCP/PAGC (Long et al., SIGIR 2025), an
 anchor-based pointwise LLM reranker. Our headline result is that
 \textbf{a single undocumented choice -- the case of the
 yes/no target tokens -- collapses NDCG@10 from 0.66 to 0.24} in
-isolation on DL19/Flan-T5-Large; six other equally fail-silent
+isolation on DL19/Flan-T5-Large; seven other equally fail-silent
 implementation details together explain the rest of the gap between
 a paper-only reimplementation and a working pipeline. After
-recovering all seven, we reproduce the paper's
+recovering all eight, we reproduce the paper's
 2-component PAGC = RG-YN+GCCP within $1.6\%$ mean absolute NDCG@10
 on TREC-DL and $1.9$--$4.5\%$ on the 8 paper-aligned BEIR sets at
 three Flan-T5 scales, exceeding the paper on five
 (\textsection\ref{sec:reproduction}).
-We then run the first paired-bootstrap (10{,}000 resamples) +
-Holm-Bonferroni significance analysis of the method, across 22
-primary (dataset $\times$ retrieval $\times$ model) settings, and
-find \textbf{the headline framing that PAGC consistently improves over pointwise does not
-hold under correction}: PAGC over GCCP-alone is Holm-significant in
-only 5/22 settings, and on the largest BEIR set (DBPedia-Entity,
-$n_q{=}400$) PAGC is Holm-significantly \emph{worse} than GCCP-alone
-($\Delta=-0.0144$, $p_{\text{Holm}}=0.032$). Aggregation with RG-YN
-is unambiguously useful only under BM25; under E5 dense retrieval
-it is roughly a wash and on at least one large-$n_q$ benchmark it
-actively hurts (\textsection\ref{sec:stats},
+We extend the original paper's per-cell paired $t$-tests (daggers in
+its Tables~1--2, ``$+$\,GCCP vs single component'' only) with paired
+bootstrap (10{,}000 resamples) + Holm-Bonferroni correction across
+three comparison families and 22 primary
+(dataset $\times$ retrieval $\times$ model) settings. PAGC vs RG-YN
+remains Holm-significant in 12/22 settings (all positive) -- the
+paper's headline ordering holds. \textbf{What does \emph{not} hold
+under correction is PAGC-vs-GCCP-alone}: Holm-significant in only
+5/22 settings, with mixed signs, including a Holm-significant
+\emph{negative} on the largest BEIR set (DBPedia-Entity, $n_q{=}400$,
+$\Delta{=}{-}0.0144$, $p_{\text{Holm}}{=}0.032$). Aggregation with
+RG-YN is unambiguously useful only under BM25; under E5 dense
+retrieval it is roughly a wash and on at least one large-$n_q$
+benchmark it actively hurts (\textsection\ref{sec:stats},
 \textsection\ref{sec:beir-e5}). Three further findings of
 independent interest: (a) the spectral MDS anchor that the paper
 recommends never wins on any of 8 BEIR sets we tested and finishes
@@ -160,51 +165,41 @@ This paper makes the following contributions:
           BEIR-SciFact/Flan-T5-Large, and BEIR-Touch\'e-2020 at
           both Flan-T5-XL and Flan-UL2).
 
-    \item A catalogue of seven undocumented implementation details
+    \item A catalogue of eight undocumented implementation details
           discovered during reproduction (Section~\ref{sec:undocumented}),
           including a single-token case discrepancy that drops NDCG@10
           from 0.66 to 0.24.
 
     \item Paired-bootstrap significance tests with Holm-Bonferroni
-          correction (the original paper reports none) across 22
-          primary (dataset $\times$ retrieval $\times$ model) settings:
-          PAGC vs RG-YN is Holm-significant in 12/22 (all positive);
-          GCCP vs RG-YN is Holm-significant in only 3/22 (the largest
-          BEIR set + Qwen-72B-AWQ on DL19/DL20); \textbf{PAGC vs
-          GCCP-alone is Holm-significant in 5/22 with mixed signs}
-          -- 4 positive (BM25 cells) and 1 \emph{negative}
+          correction across three comparison families and 22 primary
+          settings. The original paper reports only per-cell paired
+          $t$-tests for ``$+$\,GCCP vs single component'' (daggers in
+          its Tables~1--2), without multiple-comparison correction or
+          PAGC-vs-GCCP-alone tests. We find PAGC vs RG-YN
+          Holm-significant in 12/22 (all positive); GCCP vs RG-YN
+          in only 3/22; \textbf{PAGC vs GCCP-alone in 5/22 with
+          mixed signs} -- 4 positive (BM25) and 1 \emph{negative}
           (DBPedia-Entity under E5, $\Delta{=}{-}0.0144$,
-          $p_{\text{Holm}}{=}0.032$). Aggregation is unambiguously
-          useful only under BM25; under E5 it can hurt.
+          $p_{\text{Holm}}{=}0.032$).
 
     \item Four extensions absent from the original paper:
           (i) E5 dense retrieval as the first stage on TREC-DL and
-          all 8 BEIR sets, which on its own beats PAGC$+$BM25 on
-          TREC-DL; (ii) decoder-only LLMs adapted via chat templates
-          -- LLaMA-3.1-8B-Instruct, Qwen-2.5-7B-Instruct,
-          Mistral-7B-Instruct-v0.3, and Qwen-2.5-72B-Instruct-AWQ
-          (4-bit, single 48~GB GPU) -- with the 72B-AWQ variant
-          reaching PAGC NDCG@10 $=0.7465$ on DL19, exceeding both
-          our reproduced and the paper's reported Flan-UL2 numbers
-          (both the RG-YN+GCCP variant at $0.7206$ and the
-          PAGC-QSG variant at $0.7200$);
+          all 8 BEIR sets; (ii) decoder-only LLMs adapted via chat
+          templates -- LLaMA-3.1-8B-Instruct, Qwen-2.5-7B-Instruct,
+          Mistral-7B-Instruct-v0.3, and
+          Qwen-2.5-72B-Instruct-AWQ (4-bit, single 48~GB GPU);
           (iii) a 3-component PAGC-RS-YN-GCCP variant adding the
-          authors' RG-S$(0,4)$ classifier; and (iv) an
-          \texttt{llm-rankers} re-run of RankGPT-listwise as a third
-          reproducibility data point -- it does not match the
-          paper's reported listwise number under the same
-          Flan-T5 backbone, suggesting the paper's listwise stack
-          is itself under-documented.
+          authors' RG-S$(0,4)$ classifier (Section~\ref{sec:pagc_qsg});
+          and (iv) a positioning of our 2-component PAGC against the
+          listwise/pairwise baselines from the paper's Table~2 at
+          the same Flan-T5 scale (Section~\ref{sec:rankgpt}).
 
-    \item Aggregation and anchor-construction ablations across 8
-          (dataset $\times$ retrieval $\times$ model) cells: the
+    \item Aggregation and anchor-construction ablations: the
           paper's $\alpha{=}0.5$ linear baseline is statistically
-          tied with Borda voting (cell-mean 0.6556 vs 0.6544); the
-          $+1.1$~pts gap on a single DL19/T5-Large/BM25 cell does
-          not generalize. The spectral MDS anchor never wins on any
-          of the 8 BEIR sets we tested and finishes \emph{last} on
-          3/8 (TREC-COVID, Touch\'e-2020, Robust04) -- a stronger
-          negative finding than the paper's TREC-DL exception.
+          tied with Borda voting on the 8 cells we test. The
+          spectral MDS anchor never wins on any of 8 BEIR sets and
+          finishes \emph{last} on 3/8 -- a stronger negative
+          finding than the paper's TREC-DL exception.
 \end{itemize}
 
 All code, per-query scores, statistical tests, and run logs are
@@ -246,8 +241,12 @@ $f_c(q,d_i,d_a) = P(\text{`A'}) / (P(\text{`A'}) + P(\text{`B'}))$
 \paragraph{PAGC.} Final score is the equal-weight mean of RG-YN and
 GCCP:
 $f_{\text{PAGC}}(q,d) = \tfrac{1}{2}\bigl(f_{\text{RG-YN}}(q,d) + f_c(q,d,d_a)\bigr)$
-(Eq.~11), after each component's scores are min-max normalized to
-$[0,1]$ within the candidate list of $q$.
+(Eq.~11). The released code additionally min-max normalizes each
+component's scores to $[0,1]$ within the candidate list of $q$
+before averaging; this normalization step is not in Eq.~11 of the
+paper but is required for the components' scales to match. We
+catalogue this as undocumented detail \#8 in
+Section~\ref{sec:undocumented}.
 
 \paragraph{Hyperparameters.} The paper specifies
 $m=10$ (anchor pool), $z=10$ (anchor size). The threshold $\theta$,
@@ -412,7 +411,7 @@ Signal1M          & 0.2983 & 0.3027 & 0.3204 & 0.3230 & 0.3164 & 0.3186 \\
 
 A faithful first-pass re-implementation from the paper alone produced
 NDCG@10 $\approx 0.24$ on DL19 RG-YN (paper: 0.66). We
-audited the authors' released code and found seven undocumented
+audited the authors' released code and found eight undocumented
 details that together explain the entirety of the gap; their
 individual contributions, fixed in isolation, are:
 
@@ -452,6 +451,19 @@ individual contributions, fixed in isolation, are:
           \texttt{pytrec\_eval} produces a $\sim 2.5$~pt difference on
           TREC-COVID, sufficient on its own to explain a quarter of
           our largest BEIR gap.
+
+    \item \textbf{Per-query min-max normalization before linear
+          aggregation}: Eq.~11 of \cite{long2025precise} writes the
+          PAGC score as a plain average $\tfrac{1}{|R|+1}\sum$. The
+          authors' released code (\texttt{src/utils/aggregate\_utils.py},
+          functions \texttt{normalize\_scores} and
+          \texttt{aggregate\_linear}) inserts a per-query, per-component
+          min-max normalization to $[0,1]$ before the average. Without
+          it, RG-YN's $[0,1]$ probabilities and GCCP's contrastive logits
+          live on incomparable scales and the aggregation reduces to
+          ``whichever component has larger raw magnitude.'' This was
+          undocumented in the paper but is reproduced verbatim from the
+          released code.
 \end{enumerate}
 
 \paragraph{Practical implication.} A reader who tries to reproduce
@@ -480,51 +492,33 @@ finding for reproducibility-track audits: the source of every
 specific table cell, and we did not always meet that bar in
 intermediate drafts.
 
-The diagnostic steps we ran while we believed there was a gap
-to close did surface real reproducibility-relevant facts about
-the pipeline, even though the gap they were intended to close did
-not exist:
-
-\begin{itemize}[leftmargin=1.5em,nosep]
-    \item \textbf{Eigenvalue solver.} Switching from sparse
-          \texttt{scipy.sparse.linalg.eigsh} to dense
-          \texttt{numpy.linalg.eigh} (the authors' choice) moves
-          PAGC by $0.1$~pt -- below noise.
-    \item \textbf{Sentence segmentation.} Porting the authors'
-          exact NLTK-based segmentation with their hybrid
-          ``200 chars or first 128'' per-document length cap and
-          absolute-Fiedler minority-side selection lifts our
-          DL20/Flan-T5-Large GCCP from $0.6137$ to $0.6254$
-          ($+1.2$~pts) and PAGC from $0.6507$ to $0.6561$
-          ($+0.5$~pts). With segmentation alone, our PAGC at
-          $0.6561$ exceeds the paper's $0.6281$ by $+4.5\%$, an
-          even larger over-shoot.
-    \item \textbf{Seed variance.} The authors set
-          \texttt{random.seed(929)} (undocumented in the paper). We
-          re-ran T5-Large/DL20/BM25 with five seeds
-          $\{0, 42, 929, 12345, 2023\}$. The pipeline is fully
-          deterministic given fixed inputs: all five seeds produce
-          \emph{exactly} the same RG-YN, GCCP, and PAGC NDCG@10
-          ($0.6121$ / $0.6137$ / $0.6507$, std $= 0.0000$). Seed
-          plays no role in the pipeline output.
-\end{itemize}
-
-These details remain useful: a future re-implementer who
-\emph{does} have a real DL20 gap can rule out three plausible
-causes (eigenvalue solver, seed, segmentation) without re-running
-the experiments. They are also each examples of the broader
-phenomenon catalogued above -- undocumented choices in the
-released code that a paper-only reading would miss.
+The diagnostic steps we ran while pursuing the spurious gap
+nonetheless surfaced reproducibility-relevant facts. Switching
+from sparse \texttt{scipy.sparse.linalg.eigsh} to dense
+\texttt{numpy.linalg.eigh} (the authors' choice) moves PAGC by
+$0.1$~pt -- below noise. Porting the authors' exact NLTK-based
+sentence segmentation lifts DL20/T5-Large GCCP by $+1.2$~pts and
+PAGC by $+0.5$~pts (PAGC then exceeds the paper by $+4.5\%$).
+Re-running with five seeds $\{0, 42, 929, 12345, 2023\}$ gives
+identical NDCG@10 across seeds (std $=0.0000$), so seed plays no
+role in the pipeline output. A future re-implementer with a real
+DL20 gap can rule out these three causes without re-running.
 
 % ============================================================
 \section{Statistical Significance}
 % ============================================================
 \label{sec:stats}
 
-The original paper does not report significance tests for any of its
-deltas. We compute paired bootstrap two-sided $p$-values (\textbf{10{,}000
-resamples}, seed 929) on per-query NDCG@10 deltas, and 95\% CIs on the
-mean delta, for the three central comparisons across all
+The original paper reports per-cell paired $t$-tests at $p \leq 0.05$
+for ``\,$+$~GCCP vs single component'' only (the dagger markers in
+Tables~1--2 of \cite{long2025precise}); it does not report
+multiple-comparison correction, family-wise error control, PAGC vs
+GCCP-alone tests, or any of the BEIR-E5 / decoder-only / DBPedia-Entity
+analyses we add. We extend the paper's per-cell t-tests with paired
+bootstrap two-sided $p$-values (\textbf{10{,}000 resamples}, seed 929)
+on per-query NDCG@10 deltas, and 95\% CIs on the mean delta, for
+\emph{three} comparison families (PAGC vs RG-YN, PAGC vs GCCP, GCCP
+vs RG-YN) across all
 \textbf{22 primary} (dataset $\times$ retrieval $\times$ model) settings
 (14 TREC-DL cells = 7 (backbone $\times$ retrieval) combinations
 $\times$ \{DL19, DL20\}; the 7 combinations are T5-Large/BM25,
@@ -548,7 +542,7 @@ scores for all settings are released so any reader can recompute
 under the joint $k=66$ correction or any other procedure (e.g.\
 Benjamini-Hochberg).
 Auxiliary settings (the 5-seed determinism check on DL20/T5-Large/BM25,
-and the authorMDS sentence-segmentation cell) re-test the same data and
+and the authors' MDS-port sentence-segmentation cell) re-test the same data and
 are excluded from the Holm family to avoid inflating $k$ without adding
 independent hypotheses. Table~\ref{tab:stats} shows representative settings.
 
@@ -615,60 +609,36 @@ RG-YN with GCCP under E5 retrieval can hurt at large $n_q$.}
 
 \paragraph{Findings (across the 22 primary settings).}
 (i) \textbf{PAGC vs RG-YN is Holm-significant in 12/22 settings,
-all directionally positive.} 6/8 BEIR-E5 sets clear the bar; the
-two that don't are Touch\'e-2020 ($n_q{=}49$, the smallest BEIR
-test set) and TREC-News (the smallest effect size,
-$\Delta{=}{+}0.007$). On TREC-DL the 6 Holm-significant cells are
-DL19/T5-XL/E5, DL19/Qwen-2.5-7B/BM25, DL19/Mistral-7B/BM25,
-DL20/Mistral-7B/BM25, DL19/Qwen-72B-AWQ/BM25, and
-DL20/Qwen-72B-AWQ/BM25 -- skewed toward larger backbones and the
-single E5 cell. The 8 not-Holm-sig TREC-DL cells are dominated by
-small effect sizes ($\Delta{<}0.04$) on $n{=}43$--54 -- consistent
-with a power problem.
-(ii) \textbf{PAGC vs GCCP-alone is Holm-significant in 5/22
-settings, but the signs are mixed:} 4 positive (DL19/T5-Large,
-DL20/T5-Large, DL19/Mistral, DL20/Mistral, all BM25 setups) and
-\textbf{1 negative} (BEIR/DBPedia-Entity under E5,
-$\Delta{=}{-}0.0144$, $p_{\text{Holm}}{=}0.032$). All 4 positive
-cells are BM25; all E5 cells are either ns or negative. Adding RG-YN
-to GCCP under a strong dense retriever therefore stops being uniformly
-beneficial -- and on a 400-query benchmark it actively hurts.
-(iii) \textbf{GCCP-alone vs RG-YN is Holm-significant in 3/22
-settings} -- DL19/Qwen-72B-AWQ ($p_{\text{Holm}}{=}0.012$, *),
-DL20/Qwen-72B-AWQ ($p_{\text{Holm}}{=}0.004$, **), and BEIR/DBPedia-Entity
-($p_{\text{Holm}}{<}0.001$, ***). All three are either the largest
-decoder backbone we tested or the largest BEIR set; in the other 19
-settings the contrastive-anchor mechanism does not produce a
-detectable per-query signal. The paper's value remains primarily
-in the aggregation step, not in GCCP alone, except at high model
-scale or high statistical power.
+all directionally positive} -- 6/8 BEIR-E5 sets clear the bar
+(only Touch\'e-2020 $n_q{=}49$ and TREC-News $\Delta{=}{+}0.007$
+do not), plus 6/14 TREC-DL cells skewed toward larger backbones
+and the single E5 cell.
+(ii) \textbf{PAGC vs GCCP-alone is Holm-significant in 5/22 with
+mixed signs:} 4 positive (all BM25 setups) and \textbf{1 negative}
+(BEIR/DBPedia-Entity under E5, $\Delta{=}{-}0.0144$,
+$p_{\text{Holm}}{=}0.032$). All E5 cells are either ns or
+negative -- aggregating RG-YN with GCCP under a strong dense
+retriever stops being uniformly beneficial.
+(iii) \textbf{GCCP-alone vs RG-YN is Holm-significant in only
+3/22:} the two Qwen-72B-AWQ cells and BEIR/DBPedia-Entity --
+either the largest decoder backbone or the largest BEIR set. In
+the other 19 settings the contrastive-anchor mechanism does not
+produce a detectable per-query signal, even though aggregate
+means improve.
 
-\paragraph{Power caveat.} On TREC-DL with $n{=}43$ (DL19) or $n{=}54$
-(DL20) queries, ``not significant after Holm correction'' is consistent
-with both ``no effect'' and ``a real effect we can't detect.'' Where
-power is high (BEIR sets at $n{>}300$), the qualitative ordering
-persists: GCCP alone is still not significant after Holm; PAGC over
-RG-YN is. We therefore make claims of \emph{absence of evidence}, not
-\emph{evidence of absence}, for the small-$n$ TREC-DL cells. The
-released per-query scores allow any future re-analysis at higher $n$.
-
-The implication is more nuanced than ``GCCP+aggregation always
-wins.'' GCCP-alone produces a Holm-detectable per-query signal in
-only 3/22 primary settings -- exactly the settings where statistical
-power is highest (DBPedia-Entity, $n_q{=}400$) or model capacity is
-highest (Qwen-2.5-72B-AWQ on DL19+DL20). In the other 19 settings,
-GCCP and RG-YN make broadly similar per-query rankings; the
-aggregation step exploits their residual disagreement. Critically,
-under strong dense retrieval (E5), aggregation \emph{itself} stops
-being safe: PAGC is never Holm-significantly better than GCCP-alone
-on any E5 cell, and on the largest BEIR-E5 set (DBPedia-Entity)
-PAGC is Holm-significantly \emph{worse}. This is missed by the
-paper's headline framing that PAGC consistently boosts over
-pointwise, which is based on aggregate-mean improvements rather
-than per-cell significance.
+\paragraph{Power caveat.} On TREC-DL with $n{=}43$/$54$, ``not
+significant after Holm'' is consistent with both ``no effect'' and
+``a real effect we cannot detect.'' We therefore make claims of
+\emph{absence of evidence}, not \emph{evidence of absence}, for
+small-$n$ TREC-DL cells; per-query scores are released for
+re-analysis at higher $n$. The implication remains more nuanced
+than ``GCCP+aggregation always wins'': under E5, aggregation is
+never Holm-significantly better than GCCP-alone, and on the largest
+BEIR-E5 set it is significantly \emph{worse}.
 
 % ============================================================
 \section{Beyond the Paper}
+\label{sec:beyond}
 % ============================================================
 
 \subsection{E5 dense retrieval}
@@ -794,75 +764,60 @@ range from \emph{below} Flan-T5-Large (780M) to \emph{above} the
 paper's reported Flan-UL2 (20B):
 
 \begin{itemize}[leftmargin=1.5em,nosep]
-    \item \textbf{Qwen-2.5-72B-AWQ is the strongest model we tested,
-          period.} On DL19 PAGC it reaches $0.7465$, surpassing both
-          our reproduced Flan-UL2 ($0.7095$) and the paper's own
-          reported Flan-UL2 number ($0.7206$, Table~1 of
-          \cite{long2025precise}, RG-YN+GCCP row) by
-          $+2.59$~pts. On DL20 PAGC it sits slightly below the
-          paper's reported Flan-UL2 ($0.6980$ vs $0.7023$,
-          $-0.43$~pts) but matches our reproduced Flan-UL2 within
-          $0.003$. \emph{An open-weight 72B model loaded in 4-bit
-          AWQ on a single 48~GB GPU is competitive with the paper's
-          best dense-FP16 result on DL20 and exceeds it on DL19.}
-    \item \textbf{Cross-architecture transfer onto BEIR.} To
-          test whether the 72B-AWQ result transfers beyond TREC-DL,
-          we ran Qwen-2.5-72B-AWQ with E5 retrieval on the first
-          50 queries of BEIR-SciFact and BEIR-DBPedia-Entity
-          (compute-capped: $\sim$4~min/query at 72B).
-          On SciFact (50q): $\text{E5}{=}0.7993 < \text{RG-YN}{=}0.8074
-          < \text{GCCP}{=}0.8586 < \text{PAGC}{=}\textbf{0.8734}$ --
-          the strict ordering PAGC $>$ GCCP $>$ RG-YN $>$ E5
-          baseline reproduces under the 72B AWQ backbone.
-          \textbf{On DBPedia-Entity (50q), the negative finding from
-          Section~\ref{sec:beir-e5} reproduces}:
-          $\text{RG-YN}{=}0.3667 < \text{PAGC}{=}0.4139 <
-          \text{E5}{=}0.4168 < \text{GCCP}{=}\textbf{0.4380}$ --
-          PAGC is again \emph{below} GCCP-alone and even below the
-          E5 first-stage. The ``aggregating with RG-YN under E5
-          can hurt'' phenomenon is therefore not a Flan-T5-XL
-          quirk; it survives a complete change of backbone family
+    \item \textbf{Qwen-2.5-72B-AWQ is the strongest model we
+          tested.} On DL19 PAGC it reaches $0.7465$, surpassing
+          both our reproduced Flan-UL2 ($0.7095$) and the paper's
+          Flan-UL2 ($0.7206$, RG-YN+GCCP) by $+2.59$~pts. On DL20
+          PAGC it sits slightly below the paper's Flan-UL2
+          ($0.6980$ vs $0.7023$, $-0.43$~pts) but matches our
+          reproduced Flan-UL2 within $0.003$ -- a 4-bit AWQ
+          open-weight 72B on a single 48~GB GPU competitive with
+          the paper's best dense-FP16 result.
+    \item \textbf{Cross-architecture transfer onto BEIR.} On a
+          compute-capped 50-query subset ($\sim$4~min/query at 72B):
+          SciFact reproduces the strict ordering
+          $\text{E5}(0.7993) < \text{RG-YN}(0.8074) <
+          \text{GCCP}(0.8586) < \text{PAGC}(\mathbf{0.8734})$;
+          \textbf{DBPedia-Entity reproduces the negative finding from
+          Section~\ref{sec:beir-e5}}:
+          $\text{RG-YN}(0.3667) < \text{PAGC}(0.4139) <
+          \text{E5}(0.4168) < \text{GCCP}(\mathbf{0.4380})$ -- PAGC
+          underperforms GCCP-alone \emph{and} the E5 first-stage,
+          surviving a complete change of backbone family
           (encoder-decoder $\to$ decoder-only), parameter count
           ($3$B $\to$ $72$B), and quantization regime
-          (FP16 $\to$ 4-bit AWQ). The 50-query cap is a compute
-          decision, not a methodological one; we report it
-          explicitly because $n_q{=}50$ is lower-power than the
-          full BEIR-DBPedia $n_q{=}400$ result it cross-checks.
-    \item \textbf{Qwen-2.5-7B-Instruct is the strongest open
-          7B GCCP backbone we tested.} On DL19 PAGC, Qwen reaches
-          $0.7212$ vs Flan-T5-XL $0.6939$ (re-run with score saving).
-          A paired bootstrap (10{,}000 resamples, $n{=}43$) gives
-          $\Delta{=}{+}0.027$ with 95\% CI $[-0.007, +0.065]$ and
-          $p{=}0.125$ -- not significant on the small test set. The
-          honest claim is ``competitive with Flan-T5-XL,'' not
-          ``beats it.''
-    \item \textbf{LLaMA-3.1-8B-Instruct} is intermediate: PAGC is
-          $0.6723$ / $0.6166$, comparable to Flan-T5-Large despite
-          being 10$\times$ larger.
-    \item \textbf{Mistral-7B-Instruct-v0.3} underperforms on both
-          datasets, especially on GCCP: its contrastive A/B
-          discrimination score (0.5617 / 0.5105) is the weakest of
-          the four families. Its instruction-tuning recipe may not
-          calibrate the model well for binary preference tasks.
+          (FP16 $\to$ 4-bit AWQ).
+    \item At 7--8B, \textbf{Qwen-2.5-7B} is competitive with
+          Flan-T5-XL (DL19 PAGC $0.7212$ vs $0.6939$, paired
+          bootstrap $\Delta{=}{+}0.027$, $p{=}0.125$, not significant
+          on $n{=}43$); \textbf{LLaMA-3.1-8B} is below Flan-T5-Large
+          ($-1.1$/$-3.5$~pts on DL19/DL20) despite being $10\times$
+          larger by parameter count; \textbf{Mistral-7B-v0.3}
+          underperforms (especially on GCCP, A/B discrimination
+          $0.5617$/$0.5105$).
 \end{itemize}
 
-\noindent Two complementary conclusions: (a) at fixed 7--8B scale,
-\textbf{backbone family matters at least as much as parameter
-count} -- the Qwen-2.5 vs Mistral gap (+0.078 DL19 PAGC) exceeds
-the Flan-T5-Large vs Flan-UL2 gap ($+0.026$); (b) the contrastive
-anchor mechanism \textbf{transfers cleanly to large quantized
-decoder-only models} -- the 72B-AWQ result is within
-the paper's UL2 result on both datasets despite being a different
-architecture, training recipe, and quantization regime.
+\noindent Two complementary conclusions: at fixed 7--8B scale,
+backbone family matters at least as much as parameter count (the
+Qwen-2.5 vs Mistral gap $+0.078$ on DL19 PAGC exceeds Flan-T5-Large
+vs Flan-UL2 at $+0.026$); and the contrastive anchor transfers
+cleanly to large quantized decoder-only models.
 
 \subsection{Aggregation methods}
 \label{sec:agg}
 We compare the paper's equal-weight linear aggregation against an
 $\alpha$-weighted linear sweep, and Borda / Condorcet / Copeland
 rank voting, across 8 (dataset $\times$ retrieval $\times$ model)
-cells. Table~\ref{tab:agg} reports the full sweep
-(Borda/Condorcet/Copeland coincide at $|R|=2$, a useful
-methodological note on the paper's Section~4.4.1).
+cells. Because we use the 2-component PAGC = RG-YN $+$ GCCP
+throughout, $|R|=2$, and Borda / Condorcet / Copeland are
+mathematically identical in this regime; we therefore cannot
+differentiate among positional aggregation methods within our
+setup. The base paper's Section~4.4.1 study uses the 3-component
+PAGC-QYG and PAGC-QSG ($|R|=3$), where these methods can in
+principle diverge; the paper's finding that they nonetheless
+yield ``nearly identical NDCG@10'' is a substantive observation
+about that 3-component regime, not a methodological artifact.
+Table~\ref{tab:agg} reports our full sweep.
 
 \begin{table*}[t]
 \centering
@@ -890,53 +845,33 @@ identical at $|R|=2$.}
 \label{tab:agg}
 \end{table*}
 
-\paragraph{Findings (revised across the full sweep).}
-(i) \textbf{Borda is not consistently better than the paper's
-$\alpha{=}0.5$ linear:} it wins in 3/8 cells (DL19/T5-Large/BM25 by
-$+0.011$, DL20/T5-XL/BM25 by $+0.014$, DL20/T5-Large/BM25 by
-$+0.000$); the cell-mean over all 8 is essentially tied (0.6544 vs
-0.6556). The $+1.1$~pts gap on DL19/T5-Large/BM25 that we initially
-highlighted does not generalize.
-(ii) \textbf{$\alpha{=}0.25$ (more weight on GCCP) wins on every E5
-cell tested (4/4) and on DL20/T5-XL/BM25, but loses on BM25 setups
-with smaller models}; the cell-mean is 0.6550 vs 0.6556. The
-\emph{direction} of the optimal $\alpha$ is therefore sensitive to
-first-stage retrieval quality (E5 calls for more GCCP weight, BM25
-for more RG-YN weight), but the magnitude of the gap is small enough
-that $\alpha{=}0.5$ is a reasonable robust default.
-(iii) The rank-aggregation methods coincide at $|R|=2$, so the
-paper's discussion of Borda vs Condorcet vs Copeland in
-Section~4.4.1 of \cite{long2025precise} cannot meaningfully
-differentiate them at this scale; this is a methodological note
-rather than a substantive criticism.
-
-The aggregation choice is therefore not a strong lever, contrary to
-our initial reading of the DL19/T5-Large/BM25 cell. We retain the
-finding because it is replicable and because it falsifies a tempting
-sweeping claim, but we no longer present it as a deployment
-recommendation.
+\paragraph{Findings (across the 8-cell sweep).}
+(i) Borda is not consistently better than the paper's
+$\alpha{=}0.5$ linear: it wins in 3/8 cells; the cell-mean over
+all 8 is essentially tied ($0.6544$ vs $0.6556$). The $+1.1$~pt
+gap on DL19/T5-Large/BM25 we initially highlighted does not
+generalize.
+(ii) $\alpha{=}0.25$ wins on every E5 cell (4/4) and on
+DL20/T5-XL/BM25, but loses on BM25 with smaller models; cell-mean
+$0.6550$ vs $0.6556$. The optimal-$\alpha$ \emph{direction} is
+thus retrieval-quality-dependent (E5 wants more GCCP weight) but
+the magnitudes are small enough that $\alpha{=}0.5$ is a robust
+default.
+(iii) At $|R|=2$, Borda / Condorcet / Copeland are mathematically
+identical, so we cannot differentiate them; the paper's
+Section~4.4.1 study at $|R|=3$ remains the relevant evidence.
 
 \subsection{Beyond the two-component PAGC: adding RG-S}
 \label{sec:pagc_qsg}
 
-The paper proposes several PAGC variants combining GCCP with one or
-more pointwise backbones (RG-YN, RG-S(0,$k$), QG); their strongest
-reported variant is PAGC-QSG~$=$~QG~$+$~RG-S~$+$~GCCP. To address
-the reasonable concern that we have been benchmarking only the
-weakest variant (PAGC~$=$~RG-YN~$+$~GCCP), we add the RG-S(0,4)
-component and report the three-component PAGC-RS-YN-GCCP variant.
-We do not implement QG -- it requires a different inference pattern
-(full-sequence query log-likelihood given the document) and we leave
-it for follow-up work.
-
-\paragraph{Setup.} RG-S(0,4) follows the authors'
-\texttt{clf\_ranking.py} template~4 verbatim: prompt is ``From a
-scale of 0 to 4, judge the relevance between the query and the
-document. Query: \dots Document: \dots Output:''; score is peak
-relevance, $P(\text{`4'})$ over the softmax of the five integer
-labels; document truncation 128 tokens; T5 decoder primer
-\texttt{`<pad> '}. We compute RG-S scores fresh and reuse our
-already-saved RG-YN and GCCP per-query scores.
+The paper's strongest reported variant is
+PAGC-QSG~$=$~QG~$+$~RG-S~$+$~GCCP. We add the RG-S$(0,4)$ component
+and report the 3-component PAGC-RS-YN-GCCP variant; QG is left for
+follow-up since it requires full-sequence query log-likelihood.
+RG-S$(0,4)$ follows the authors' \texttt{clf\_ranking.py} template~4
+(prompt ``From a scale of 0 to 4, judge the relevance''; score is
+$P(\text{`4'})$ via the softmax of the 5 integer labels;
+truncation 128 tokens; T5 decoder primer \texttt{`<pad> '}).
 
 \begin{table}[t]
 \centering
@@ -976,102 +911,67 @@ remains untested by us; we expect QG to behave similarly to the
 other components -- helpful when its component scores are uncorrelated
 with RG-YN/GCCP errors, but not always so.
 
-\subsection{Listwise as a third reproducibility data point}
+\subsection{Position relative to listwise/pairwise baselines}
 \label{sec:rankgpt}
 
-We do \emph{not} use the listwise re-run as a comparison baseline:
-our re-run is too far below the paper's reported listwise
-numbers to support a head-to-head claim. Instead, this subsection
-documents the listwise re-run as an additional reproducibility
-data point -- a third instance, beyond the seven undocumented
-implementation details (Section~\ref{sec:undocumented}) and the
-asymmetric anchor-baseline gap (Section~\ref{sec:anchor-ablation}),
-where a Flan-T5-backed re-implementation of a method the paper
-reports does not match the paper's reported number under what we
-believe is the same backbone.
-
-The original paper compares PAGC against listwise/pairwise methods
-(RankGPT, PRP-Allpair, Setwise-Heapsort, etc.) on Flan-T5
-backbones in its Table~2. We re-run the listwise sliding-window
-prompting of \cite{sun2023chatgpt} via the \texttt{llm-rankers}
-implementation, with window 20 and step 10, on the same Flan-T5
-backbones used for PAGC.
+To contextualize our 2-component PAGC against the listwise and
+pairwise baselines the paper reports in its Table~2, we summarize
+the paper-reported numbers (no re-run) alongside our PAGC numbers
+at the same Flan-T5 scales.
 
 \begin{table}[t]
 \centering
 \small
 \begin{tabular}{lcc}
 \toprule
-\textbf{Method}                        & DL19   & DL20 \\
+\textbf{Method (Flan-T5-Large, DL19/DL20)} & DL19 & DL20 \\
 \midrule
-BM25                                   & 0.5058 & 0.4796 \\
+BM25 (no rerank)                       & 0.5058 & 0.4796 \\
 \midrule
-\multicolumn{3}{l}{\emph{Paper Table~2 \cite{long2025precise} (Flan-T5-Large):}}\\
-\quad RankGPT (paper)                  & 0.6690 & 0.6260 \\
-\quad PRP-Allpair (paper)              & 0.6646 & 0.6201 \\
-\quad PRP-Heapsort (paper)             & 0.6570 & 0.6190 \\
-\quad PRP-Graph-40 (paper)             & 0.6690 & 0.6270 \\
-\quad Setwise-Heapsort (paper)         & 0.6700 & 0.6180 \\
-\quad PAGC-QSG (paper)                 & 0.6973 & 0.6433 \\
+\multicolumn{3}{l}{\emph{Paper-reported (Table~2 of \cite{long2025precise}):}}\\
+\quad RankGPT                          & 0.6690 & 0.6260 \\
+\quad PRP-Allpair                      & 0.6646 & 0.6201 \\
+\quad PRP-Heapsort                     & 0.6570 & 0.6190 \\
+\quad PRP-Graph-40                     & 0.6690 & 0.6270 \\
+\quad Setwise-Heapsort                 & 0.6700 & 0.6180 \\
+\quad PAGC-QSG (paper, 3-comp)         & 0.6973 & 0.6433 \\
 \midrule
-\multicolumn{3}{l}{\emph{Paper Table~2 \cite{long2025precise} (Flan-T5-XL):}}\\
-\quad RankGPT (paper)                  & 0.6890 & 0.6720 \\
-\quad PRP-Allpair (paper)              & 0.7108 & 0.6821 \\
-\quad PRP-Heapsort (paper)             & 0.7050 & 0.6920 \\
-\quad PRP-Graph-40 (paper)             & 0.6972 & 0.6767 \\
-\quad Setwise-Heapsort (paper)         & 0.6930 & 0.6780 \\
-\quad PAGC-QSG (paper)                 & 0.7068 & 0.6872 \\
-\midrule
-\multicolumn{3}{l}{\emph{Ours (re-run via \texttt{llm-rankers}):}}\\
-\quad RankGPT-listwise / Flan-T5-Large & 0.5279 & 0.4715 \\
-\quad RankGPT-listwise / Flan-T5-XL    & 0.5238 & 0.4932 \\
-\midrule
-\multicolumn{3}{l}{\emph{Ours (PAGC = RG-YN $+$ GCCP):}}\\
+\multicolumn{3}{l}{\emph{Ours (PAGC = RG-YN $+$ GCCP, 2-comp):}}\\
 \quad PAGC / Flan-T5-Large             & \textbf{0.6852} & \textbf{0.6507} \\
 \quad PAGC / Flan-T5-XL                & \textbf{0.6939} & 0.6760 \\
 \bottomrule
 \end{tabular}
-\caption{Listwise (RankGPT-style) reranking vs PAGC at the same
-Flan-T5 model scale. All paper-reported numbers are from Table~2 of
-\cite{long2025precise}, which evaluates the Flan-T5 backbone on the
-same DL19/DL20 query sets. Our re-run of RankGPT-listwise via
-\texttt{llm-rankers} reproduces \emph{poorly} relative to the
-paper's reported RankGPT numbers ($0.5279$ vs $0.6690$ on DL19/T5-Large,
-a $-14$~pt gap), suggesting either a difference in
-listwise-implementation choices (sliding-window size, top-$k$
-truncation, prompt template) or a different RankGPT setup than
-\cite{sun2023chatgpt} that the paper does not describe. We
-\emph{do} reproduce PAGC (our $0.6852$ vs paper's PAGC-QSG $0.6973$
-on DL19/T5-Large), so the re-implementation gap is specific to the
-listwise stack.}
+\caption{Position of our 2-component PAGC relative to the listwise
+and pairwise baselines the paper reports in its Table~2 (no
+re-run; numbers cited verbatim). Our PAGC sits inside the bracket
+of paper-reported listwise/pairwise baselines -- slightly above
+all of the paper's listwise/pairwise rows and slightly below its
+3-component PAGC-QSG.}
 \label{tab:rankgpt}
 \end{table}
 
-\paragraph{Finding (as a reproducibility data point, not a baseline
-comparison).} \textbf{Our \texttt{llm-rankers} re-run of
-RankGPT-listwise produces $0.5279$ on DL19/Flan-T5-Large -- a
-$-14$~pt gap below the paper's reported RankGPT $0.6690$ under
-the same backbone}, and $0.5238$ on DL19/Flan-T5-XL vs the paper's
-$0.6890$ ($-16.5$~pts). The same backbone, the same query set, the
-same listwise paradigm, a published off-the-shelf implementation,
-and yet the gap is more than 2$\times$ the reproduction gap we
-document on PAGC. This is a third instance of the broader
-phenomenon catalogued in Section~\ref{sec:undocumented}: the paper
-under-documents enough of the listwise stack
-(sliding-window size, top-$k$ truncation, prompt template,
-exact \cite{sun2023chatgpt} variant) that an independent
-re-implementation does not converge on the paper's number.
-
-For context: the paper reports PAGC-QSG (Flan-T5-Large) beating its
-own listwise/pairwise baselines (RankGPT $0.6690$, PRP-Allpair
-$0.6646$, Setwise-Heapsort $0.6700$ on DL19) by $+2$ to $+4$~pts.
-Our 2-component PAGC ($0.6852$) sits within that bracket -- slightly
-above all of the paper's listwise/pairwise baselines and slightly
-below its PAGC-QSG ($0.6973$). We do \emph{not} read this as
-``PAGC beats RankGPT'' because our own RankGPT re-run does not
-agree with the paper's RankGPT number; we report it only as
-evidence that the paper's reproducibility hazards extend beyond
-its own pointwise stack.
+\paragraph{Position.} Our 2-component PAGC ($0.6852$ on DL19/T5-Large)
+sits inside the bracket of the paper's reported listwise/pairwise
+methods -- slightly above all five (RankGPT $0.6690$,
+PRP-Allpair $0.6646$, PRP-Heapsort $0.6570$, PRP-Graph-40 $0.6690$,
+Setwise-Heapsort $0.6700$) and slightly below the paper's
+3-component PAGC-QSG ($0.6973$). At Flan-T5-XL the picture is
+similar but the listwise/pairwise baselines are stronger:
+PRP-Allpair ($0.7108$) and PRP-Heapsort ($0.7050$) edge above our
+2-component PAGC ($0.6939$), and PAGC-QSG ($0.7068$) leads. The
+qualitative ordering -- 3-component aggregation $>$ 2-component
+aggregation $>$ listwise/pairwise on T5-Large; pairwise variants
+become competitive with 2-component aggregation at T5-XL -- is
+consistent with the paper's Table~2 narrative.\footnote{We
+attempted an \texttt{llm-rankers} re-run of RankGPT-listwise on
+the same Flan-T5 backbones to enable a re-implemented head-to-head
+comparison; our re-run produces NDCG@10 $\approx 0.5$, well below
+the paper's reported RankGPT $\approx 0.6690$. We were unable to
+identify the cause from the released artifacts (sliding-window
+size, top-$k$ truncation, prompt template, exact RankGPT variant
+of~\cite{sun2023chatgpt}) and therefore do \emph{not} include the
+re-run as a comparison baseline; the released code is in our
+artifact for any reader who wants to take the discrepancy further.}
 
 \subsection{Anchor and parameter ablations}
 \label{sec:anchor-ablation}
@@ -1174,56 +1074,28 @@ is the \emph{opposite} of the paper's reported aggregate (Spectral
 $>$ Top $>$ Random).
 
 \paragraph{Reconciliation: title-only Top closes the gap.}
-On a per-anchor basis, our reproduction matches the paper closely
-on Spectral (ours $0.4446$ vs paper $0.4471$, gap $+0.0025$) but
-diverged on Top ($0.4512$ vs $0.4346$, $+0.017$) and Random
-($0.4423$ vs $0.4253$, $+0.017$) in our initial 4-anchor sweep.
-We tested four plausible operationalizations of ``Top'' and
-``Random'' to identify which matches the paper's numbers
-(Table~\ref{tab:beir-anchor-variants}):
-\begin{itemize}[leftmargin=1.5em,nosep]
-    \item \textbf{Random-5 averaging} ($\{0,42,929,12345,2023\}$,
-          per-query NDCG@10 averaged across seeds) gives
-          $0.4364$ -- closes $\sim 35\%$ of the Random gap
-          ($0.4423 \to 0.4364$ vs paper $0.4253$); per-seed std
-          is small ($\leq 0.009$ on every set), so Random-5 alone
-          is not the explanation.
-    \item \textbf{Top-5 composite} (sentence-interleaved over
-          top-5 docs vs top-3) gives $0.4547$ -- moves Top
-          \emph{further} from the paper, ruling out ``the paper
-          used more docs''.
-    \item \textbf{Top-1 with 64-char truncation} drops to
-          $0.4157$ -- below the paper's $0.4346$, ruling out
-          ``the paper truncates harder''.
-    \item \textbf{Top-1 title-only}: take only the document
-          title (the leading clause before the first ``. ''
-          when BEIR concatenates ``Title. body...''). This gives
-          \textbf{$0.4313$, within $0.003$ of the paper's
-          $0.4346$ -- essentially matching}. The asymmetric
-          $+0.017$ Top gap is therefore explained by the paper's
-          ``Top'' baseline being the title of the top-1 BM25
-          document, not the full document.
-\end{itemize}
-The Random gap is partially explained by 5-sample averaging but
-$\sim 0.011$ of it remains; this likely reflects the paper using a
-different random-document operationalization (e.g.\ random
-sentence rather than random document) that we have not yet
-pinned down. We have also sent an email to the corresponding
-author at NUDT with this specific question; the supplementary
-includes the email.
+Our reproduction matches the paper closely on Spectral
+($0.4446$ vs $0.4471$, $+0.0025$) but diverges on Top ($+0.017$)
+and Random ($+0.017$) in the initial 4-anchor sweep. We tested
+four plausible operationalizations of the paper's ``Top'' and
+``Random'' (Table~\ref{tab:beir-anchor-variants}). Random-5
+averaging closes $\sim 35\%$ of the Random gap (per-seed std
+$\leq 0.009$); Top-5 and 64-char Top-1 truncation move further
+from the paper; \textbf{Top-1 title-only matches the paper's
+``Top'' within $0.003$} ($0.4313$ vs $0.4346$), identifying the
+likely operationalization. The residual $\sim 0.011$ on Random
+likely reflects a different random-document choice (e.g.\ random
+sentence) we have not yet pinned down (see the supplementary
+email to the original authors).
 
-\paragraph{Implication for the spectral MDS conclusion.} Adding
-title-only Top, Top-5, Random-5, and 64-char-truncated Top-1 to
-the comparison \emph{strengthens} our negative finding on Spectral:
-across the 9 anchor variants we tested per dataset, \textbf{Spectral
-never finishes first on any of 8 BEIR sets}. Title-only Top-1
-($0.4313$) is below Spectral ($0.4446$) on aggregate, so Spectral
-beats the paper's likely ``Top'' baseline on average -- consistent
-with the paper -- but is still beaten by Top-3 composite
-($0.4581$) and Top-1 BM25 full-document ($0.4512$) per cell. The
-engineering cost of spectral MDS is therefore not justified
-relative to a top-3 sentence-interleaved composite, even after we
-match the paper's likely ``Top'' operationalization.
+\paragraph{Implication for the spectral MDS conclusion.} Even
+after matching the paper's likely ``Top'' baseline, the negative
+finding on Spectral \emph{strengthens}: across the 9 anchor
+variants we tested per dataset, Spectral never finishes first on
+any of 8 BEIR sets. It is beaten by Top-3 composite ($0.4581$) and
+full-document Top-1 ($0.4512$) on aggregate, so the engineering
+cost of spectral MDS is not justified relative to a top-3
+sentence-interleaved composite even under the paper's own ``Top''.
 
 \begin{table*}[t]
 \centering
@@ -1320,24 +1192,19 @@ worse than GCCP-alone} ($\Delta=-0.0144$, $p_{\text{Holm}}{=}0.032$).}
 \end{table*}
 
 \paragraph{Findings.}
-(i) \textbf{PAGC vs RG-YN holds up under E5}: Holm-significant in
-6/8 sets, directionally positive in 8/8. The 2 non-significant sets
-(Touch\'e-2020 $n{=}49$, TREC-News $n{=}57$) are the smallest by
-query count, consistent with a power problem rather than a real
-non-effect.
+(i) \textbf{PAGC vs RG-YN holds up under E5}: Holm-sig in 6/8,
+directional in 8/8 (the 2 non-sig sets are the smallest by query
+count, a power problem).
 (ii) \textbf{PAGC vs GCCP-alone is the surprising negative}: in
-\emph{none} of the 8 sets is PAGC Holm-significantly better than
-GCCP-alone, and on the largest set (DBPedia-Entity, $n{=}400$) PAGC
-is Holm-significantly \emph{worse} (RG-YN drags GCCP down on this
-set). Aggregating with RG-YN therefore does not consistently help
-once the first-stage retriever is strong; it sometimes hurts. This
-echoes our DL/E5 finding (Table~\ref{tab:agg}) that the optimal
-$\alpha$ shifts toward GCCP under E5 (i.e.\ less weight on RG-YN).
-(iii) \textbf{GCCP-alone vs RG-YN under E5}: Holm-significant in
-1/8 sets (DBPedia-Entity ***), directionally positive in 8/8 ---
-the same overall picture as on TREC-DL (lots of directional gains,
-underpowered to Holm-confirm at the per-dataset level), but with
-DBPedia-Entity standing out as the one E5 cell where the
+\emph{none} of 8 sets is PAGC Holm-significantly better than
+GCCP-alone, and on the largest (DBPedia-Entity, $n{=}400$) PAGC is
+Holm-significantly \emph{worse}. Aggregating with RG-YN does not
+consistently help once the first-stage retriever is strong --
+echoing our DL/E5 finding (Table~\ref{tab:agg}) that the optimal
+$\alpha$ shifts toward GCCP under E5.
+(iii) \textbf{GCCP-alone vs RG-YN}: Holm-sig in 1/8
+(DBPedia-Entity ***), directional in 8/8 -- the same picture as
+TREC-DL but with DBPedia standing out as the E5 cell where the
 contrastive-anchor mechanism is decisively better than yes/no
 scoring.
 
@@ -1371,7 +1238,7 @@ number is derived from end-to-end run wall-clock (the harness run
 suffered from CPU offload of UL2 weights when sharing the GPU with a
 concurrent process and produced misleadingly high numbers). The
 end-to-end estimate is from 21 minutes / 54 DL20 queries
-($\approx 23$\,s/q for the full RG-YN+GCCP+PAGC pipeline). T5-Large
+($\approx 23$\,s/q end-to-end, i.e.\ RG-YN scoring $+$ GCCP scoring $+$ PAGC linear aggregation). T5-Large
 and T5-XL are nearly identical in wall-clock; FP16 $+$
 \texttt{device\_map='auto'} hides parameter-count differences in this
 regime, but UL2 ($\sim 10\times$) is an order of magnitude slower.}
@@ -1385,8 +1252,8 @@ regime, but UL2 ($\sim 10\times$) is an order of magnitude slower.}
 
 \paragraph{The reproduction succeeded, broadly.} Mean absolute
 NDCG@10 gap of $1.6\%$ on the six TREC-DL cells and $1.9$--$4.5\%$
-on the 24 BEIR cells (across three model scales). We exceed the
-paper on five cells, including a $+3.7\%$ over-shoot on
+on BEIR (24 cells = 8 sets $\times$ 3 model scales). We exceed
+the paper on five cells, including a $+3.7\%$ over-shoot on
 DL20/Flan-T5-Large that earlier drafts had recorded as a deficit
 (Section~\ref{sec:undocumented}). \textbf{The method's central
 claim -- that an anchor-based contrastive prompt aggregated with
@@ -1397,51 +1264,37 @@ DBPedia-Entity finding and the Holm-corrected non-results on E5
 cells qualify the paper's framing without invalidating its central
 claim.
 
-\paragraph{The lessons are about practice, not the method.} Seven
-undocumented details, each fail-silent, between paper text and
-working code is itself a finding worth communicating. Two of them
-(the decoder-input string and the target-token case) determine
-whether the method works at all. The community-relevant takeaway
-is that ``release code'' is not equivalent to ``the paper is
-reproducible'': the authors' code is a corpus that must be audited,
-and the audit is itself research labour.
+\paragraph{The lessons are about practice, not the method.}
+Eight fail-silent undocumented details between paper text and
+working code is itself a finding worth communicating. Three are
+make-or-break (decoder input string, target-token case, min-max
+normalization): without any one, the pipeline runs to completion
+but produces a broken ranking. ``Release code'' is not equivalent
+to ``the paper is reproducible'': the released code is a corpus
+that must be audited, and the audit is itself research labour.
 
-\paragraph{The paper's headline claim is statistically more
-contingent than it looks.} GCCP-alone is Holm-significantly different
-from RG-YN in only 3/22 settings (the largest BEIR set,
-DBPedia-Entity, and Qwen-72B-AWQ on DL19+DL20) -- the contrastive
-anchor's per-query signal becomes detectable at high power or high
-model scale, and is otherwise indistinguishable from the
-yes/no baseline. PAGC's gain over GCCP is regime-dependent:
-Holm-significant in only 5/22 settings, with 4 of those being
-BM25 cells and \emph{1 in the opposite direction} (DBPedia-Entity
-under E5, $\Delta{=}{-}0.0144$, $p_{\text{Holm}}{=}0.032$). The
-honest interpretation is that GCCP and RG-YN make complementary
-mistakes only on a noisy candidate list; under E5 the two rankers
-mostly agree, the aggregation has little disagreement to read out,
-and on at least one large-$n_q$ benchmark RG-YN actively drags
-GCCP down. ``Aggregation is unambiguously useful only under BM25;
-under E5 it is roughly a wash and on at least one large-$n_q$ set
-it actively hurts'' captures the data better than the paper's
-framing that PAGC consistently improves over pointwise.
+\paragraph{The paper's PAGC-vs-GCCP claim is statistically more
+contingent than it looks.} GCCP-alone is Holm-significantly
+different from RG-YN in only 3/22 settings -- the contrastive
+anchor's per-query signal becomes detectable only at high power or
+high model scale. PAGC's gain over GCCP is Holm-significant in
+5/22 with mixed signs: 4 positive (all BM25) and 1 negative
+(DBPedia-Entity under E5). GCCP and RG-YN make complementary
+mistakes mainly on noisy BM25 candidate lists; under E5 the two
+agree and aggregation has little to read out. ``Aggregation is
+unambiguously useful only under BM25; under E5 it is roughly a
+wash and on at least one large-$n_q$ set it actively hurts''
+captures the data better than the paper's framing that PAGC
+reliably improves over GCCP alone.
 
 \paragraph{First-stage retriever interacts with reranker value.}
-The original paper proposes GCCP/PAGC as a reranker that is in
-principle orthogonal to the first stage. Our results refine that
-picture: the marginal NDCG@10 contribution of GCCP/PAGC over its
-first-stage baseline depends substantially on the quality of that
-baseline. With BM25 the gain is large (e.g.\ +0.197 PAGC over BM25
-on DL20 with T5-XL); with E5 the gain is small (+0.013 on DL20) and
-on SciFact PAGC marginally hurts ($-0.010$ over E5). In regimes
-constrained to BM25, GCCP remains a clear win; in regimes where a
-strong dense retriever is already deployed, the marginal value of
-GCCP shrinks and an aggregation choice -- e.g.\ a non-uniform $\alpha$
-or a rank-aggregation method, see Section~\ref{sec:agg} -- starts
-to matter relative to the GCCP step itself. We do not claim
-practitioners should abandon the reranker; we claim the
-\emph{relative} value of GCCP to a first-stage upgrade depends on
-the deployment regime, and that the original paper's BM25-only
-evaluation underrepresents the latter.
+The marginal NDCG@10 contribution of GCCP/PAGC over its first-stage
+baseline depends on the baseline's quality. With BM25 the gain is
+large (e.g.\ $+0.197$ PAGC over BM25 on DL20/T5-XL); with E5 it is
+small ($+0.013$ on DL20) and on SciFact PAGC marginally hurts
+($-0.010$). The relative value of GCCP to a first-stage upgrade
+depends on the deployment regime; the original paper's BM25-only
+evaluation underrepresents the strong-retriever case.
 
 % ============================================================
 \section{Conclusion}
@@ -1453,89 +1306,75 @@ original paper does not contain. Our findings, in order of
 practical importance:
 
 \begin{enumerate}[leftmargin=1.5em,nosep]
-    \item The method's headline claim reproduces with a mean
-          absolute gap of $1.6\%$ NDCG@10 on TREC-DL and
-          $1.9$--$4.5\%$ on BEIR; we exceed the paper on five cells
-          (TREC-DL/Flan-T5-XL/DL19, TREC-DL/Flan-T5-Large/DL20,
-          BEIR-SciFact/Flan-T5-Large, BEIR-Touch\'e-2020 at
-          Flan-T5-XL and Flan-UL2). The largest TREC-DL gap is
-          $-2.5\%$ on DL19/Flan-T5-Large.
-    \item Seven undocumented implementation details determine whether
+    \item The method's headline claim reproduces within a $1.6\%$
+          mean absolute NDCG@10 gap on TREC-DL and $1.9$--$4.5\%$
+          on BEIR; we exceed the paper on five cells.
+    \item Eight undocumented implementation details determine whether
           a paper-only reimplementation works at all; one of them
           (target-token case) drops NDCG@10 from 0.66 to 0.24 in
-          isolation.
-    \item Across 22 primary (dataset $\times$ retrieval $\times$
-          model) settings, paired-bootstrap (10k resamples) with
-          Holm-Bonferroni correction shows: \textbf{GCCP-alone vs
-          RG-YN} is Holm-sig in 3/22 (DBPedia-Entity ***;
-          Qwen-72B-AWQ on DL19+DL20 *, **) -- the contrastive-anchor
-          signal becomes detectable only at high power or high
-          model scale. \textbf{PAGC vs RG-YN} is Holm-sig in 12/22
-          (all positive). \textbf{PAGC vs GCCP} is Holm-sig in 5/22
-          with mixed signs: 4 positive (BM25 cells), 1 negative
+          isolation, and three are make-or-break.
+    \item Across 22 primary settings, paired-bootstrap (10k
+          resamples) with Holm-Bonferroni correction shows:
+          \textbf{GCCP-alone vs RG-YN} Holm-sig in only 3/22 (the
+          contrastive-anchor signal becomes detectable only at high
+          power or high model scale); \textbf{PAGC vs RG-YN}
+          Holm-sig in 12/22 (all positive -- the paper's headline
+          ordering holds); \textbf{PAGC vs GCCP} Holm-sig in 5/22
+          with \emph{mixed signs} -- 4 positive (BM25), 1 negative
           (DBPedia-Entity, $\Delta{=}{-}0.0144$, $p_{\text{Holm}}{=}0.032$).
           Aggregation is unambiguously useful only under BM25;
-          under E5 it is roughly a wash and on at least one
-          large-$n_q$ set it actively hurts.
-    \item The \textbf{spectral MDS anchor never wins} on any of the
-          8 BEIR sets we ran anchor ablations on
-          (Table~\ref{tab:beir-anchor}) and \emph{finishes last on
-          3/8} (TREC-COVID, Touch\'e-2020, Robust04, where Random
-          beats it). On the remaining 5 sets it lands second or
-          third. Top-3 wins 5/8 and Random wins 3/8. Aggregate
-          ordering across all 8 sets is Top-3 (0.4581) $>$ Top-1
-          (0.4512) $>$ Spectral (0.4446) $>$ Random (0.4423), the
-          \emph{opposite} of the paper's reported aggregate
-          Spectral (0.4471) $>$ Top (0.4346) $>$ Random (0.4253). A
-          9-variant operationalization sweep
-          (Table~\ref{tab:beir-anchor-variants}) identifies the
-          paper's likely ``Top'' baseline as title-only Top-1
-          (our $0.4313$ vs paper's $0.4346$, $\Delta{-}0.003$);
-          even after matching that operationalization, Spectral is
-          still beaten by Top-3 ($0.4581$) and full-document Top-1
-          ($0.4512$), so the negative spectral conclusion holds.
-    \item Replacing BM25 with E5 dense retrieval lifts the entire
-          pipeline by 2--4~pts NDCG@10 on TREC-DL and already
-          exceeds both the paper's RG-YN+GCCP variant ($0.6969$
-          DL19, $0.6810$ DL20 with Flan-T5-XL) and its 3-component
-          PAGC-QSG variant ($0.7068$ DL19, $0.6872$ DL20). The
-          contrastive anchor contributes less when the candidate
-          list is already clean.
-    \item Generalizing the E5 setup to all 8 paper-aligned BEIR
-          sets (Table~\ref{tab:beir-e5}, Section~\ref{sec:beir-e5}),
-          PAGC beats RG-YN Holm-significantly in 6/8 sets, but
-          \textbf{PAGC vs GCCP-alone is never Holm-significantly
-          positive and is Holm-significantly \emph{negative} on
-          DBPedia-Entity} ($\Delta{=}{-}0.0144$, $p_{\text{Holm}}{=}0.032$).
-          Aggregating with RG-YN therefore stops being uniformly
-          beneficial once the first-stage retrieval is strong --
-          on a 400-query benchmark it actively hurts.
-    \item Decoder-only LLMs work with our chat-template adaptation
-          (with a critical \texttt{`Passage '} primer for the GCCP
-          turn). \textbf{Qwen-2.5-72B-Instruct-AWQ reaches PAGC
-          NDCG@10 $=0.7465$ on DL19,} surpassing both our reproduced
-          Flan-UL2 (0.7095) and the paper's own Flan-UL2 (both the
-          RG-YN+GCCP variant at $0.7206$ and PAGC-QSG at
-          $0.7200$) on DL19. A
-          compute-capped 50-query check on BEIR shows the
-          DBPedia-Entity negative finding strengthens under this
-          backbone -- PAGC ($0.4139$) underperforms not just
-          GCCP-alone ($0.4380$) but also the E5 first-stage
-          ($0.4168$).
-          At 7--8B scale, Qwen-2.5-7B is competitive with Flan-T5-XL
-          ($p{=}0.125$, not significant on $n{=}43$); LLaMA-3.1-8B
-          is intermediate; Mistral-7B-Instruct-v0.3 underperforms.
+          under E5 it is a wash and on at least one large-$n_q$
+          set it hurts.
+    \item The \textbf{spectral MDS anchor never wins} on any of
+          8 BEIR sets in the paper's 4-anchor comparison and
+          finishes last on 3/8. A 9-variant operationalization
+          sweep identifies the paper's likely ``Top'' baseline as
+          title-only Top-1 ($\Delta{-}0.003$ to paper's average);
+          even after that match, Spectral is beaten by Top-3 and
+          full-document Top-1, so the negative spectral conclusion
+          holds.
+    \item Replacing BM25 with E5 dense retrieval lifts the
+          pipeline by 2--4~pts NDCG@10 on TREC-DL and exceeds both
+          the paper's RG-YN+GCCP and PAGC-QSG variants on
+          Flan-T5-XL. The contrastive anchor contributes less when
+          the candidate list is already clean. Generalized to all
+          8 BEIR sets under E5 + Flan-T5-XL, PAGC beats RG-YN
+          Holm-significantly in 6/8 but \textbf{PAGC vs GCCP-alone
+          is never Holm-significantly positive and is
+          Holm-significantly negative on DBPedia-Entity}.
+    \item Decoder-only LLMs work with our chat-template adaptation.
+          \textbf{Qwen-2.5-72B-Instruct-AWQ reaches PAGC
+          NDCG@10 $=0.7465$ on DL19,} surpassing our reproduced
+          Flan-UL2 ($0.7095$) and both paper Flan-UL2 variants
+          ($0.7206$ RG-YN+GCCP, $0.7200$ PAGC-QSG). A 50-query
+          BEIR check shows the DBPedia negative \emph{strengthens}
+          under this 72B backbone: PAGC ($0.4139$) underperforms
+          not just GCCP-alone ($0.4380$) but also the E5
+          first-stage ($0.4168$). At 7--8B, Qwen-2.5-7B is
+          competitive with Flan-T5-XL ($p{=}0.125$); LLaMA-3.1-8B
+          is below Flan-T5-Large; Mistral-7B underperforms.
           Backbone family matters at least as much as parameter
-          count at the 7--8B scale; quantization is not a barrier
-          at the 72B scale.
-    \item NDCG@10 implementations are not interchangeable; using
-          a hand-written routine instead of \texttt{pytrec\_eval}
+          count at 7--8B; quantization is not a barrier at 72B.
+    \item NDCG@10 implementations are not interchangeable; a
+          hand-written routine instead of \texttt{pytrec\_eval}
           accounts for $\sim 2.5$~pts of our largest BEIR gap.
 \end{enumerate}
 
 Code, per-query scores, run logs, statistical tests, and the
 reproducibility checklist are released at
 \url{https://github.com/utshabkg/GCCP-reproduce}.
+
+\begin{acks}
+We thank the original authors of \cite{long2025precise} for
+releasing their codebase, which was essential for auditing the
+implementation choices catalogued in
+Section~\ref{sec:undocumented}.
+We acknowledge the use of large-language-model assistants
+(Anthropic Claude) for prose drafting and revision; all
+experimental design, code, results, and statistical analyses
+are the authors' work, and the authors take final responsibility
+for all content.
+\end{acks}
 
 % ============================================================
 \appendix
@@ -1544,30 +1383,18 @@ reproducibility checklist are released at
 \section{Full enumeration of the 22 primary statistical-test settings}
 \label{app:full-stats}
 
-Table~\ref{tab:full-stats} enumerates every (dataset $\times$ retrieval
-$\times$ model) cell that contributes to the Holm correction family
-in Section~\ref{sec:stats}. Auxiliary settings (the 5-seed
-determinism check on DL20/Flan-T5-Large/BM25 and the authorMDS
-sentence-segmentation cell) re-test the same query data and are
-\emph{not} included in the family count. The $p_{\text{Holm}}$
-correction is applied with $k=22$ within each comparison family
-(``PAGC vs RG-YN'', ``PAGC vs GCCP'', ``GCCP vs RG-YN'') so that
-each family's family-wise error rate is bounded at $0.05$
-independently. We do not run a third Holm pass over the union of
-the three families (which would inflate $k$ to 66 and lose power
-against findings that are family-conditional).
+Table~\ref{tab:full-stats} enumerates every cell in the Holm
+correction family of Section~\ref{sec:stats} (auxiliary
+seed-sweep and authors'-MDS-port settings re-test the same data and are
+excluded). Holm uses $k=22$ within each comparison family.
 
-\paragraph{Uncorrected counts, for calibration.} Holm correction
-with $k=22$ on $n_q$ as low as 43--57 is conservative; readers
-calibrating between ``not significant'' and ``no effect'' can
-compare against the uncorrected counts: under raw $\alpha{=}0.05$,
-PAGC vs RG-YN is significant in 15/22 (vs 12/22 Holm); PAGC vs
-GCCP is significant in 8/22 with 1 negative (vs 5/22 with 1
-negative under Holm); GCCP vs RG-YN is significant in 9/22 (vs
-3/22 under Holm). The Holm correction's largest effect is on the
-GCCP-vs-RG-YN family (6 raw-significant settings drop out), which
-is consistent with our headline that GCCP-alone's per-query signal
-is weaker than aggregate-mean improvements suggest.
+\paragraph{Uncorrected counts, for calibration.}
+Under raw $\alpha{=}0.05$: PAGC vs RG-YN sig in 15/22 (vs 12/22
+Holm); PAGC vs GCCP in 8/22 with 1 negative (vs 5/22 Holm);
+GCCP vs RG-YN in 9/22 (vs 3/22 Holm). Holm's largest effect is on
+the GCCP-vs-RG-YN family (6 raw-sig drop out), consistent with
+our finding that GCCP-alone's per-query signal is weaker than
+aggregate-mean improvements suggest.
 
 \begin{table*}[t]
 \centering
