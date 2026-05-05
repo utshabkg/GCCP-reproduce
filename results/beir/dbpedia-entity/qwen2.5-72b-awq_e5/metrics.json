@@ -1,0 +1,34 @@
+{
+  "experiment": {
+    "dataset": "dbpedia-entity",
+    "model": "/media/20TB/shared/models/qwen/Qwen2.5-72B-Instruct-AWQ/models--Qwen--Qwen2.5-72B-Instruct-AWQ/snapshots/698703eae6604af048a3d2f509995dc302088217",
+    "short_name": "qwen2.5-72b-awq",
+    "num_queries": 50,
+    "elapsed": "2:47:39.436984",
+    "timestamp": "2026-05-04T16:50:12.146480",
+    "max_doc_length": 128,
+    "first_stage": "e5"
+  },
+  "results": {
+    "e5": {
+      "ndcg@10": 0.4168065611715054,
+      "p@10": 0.4080000000000002,
+      "recall@10": 0.16510649544565417
+    },
+    "rg_yn": {
+      "ndcg@10": 0.36665359311054435,
+      "p@10": 0.38,
+      "recall@10": 0.14774347403566054
+    },
+    "gccp": {
+      "ndcg@10": 0.43800652692016667,
+      "p@10": 0.42199999999999993,
+      "recall@10": 0.18058461732360812
+    },
+    "pagc": {
+      "ndcg@10": 0.41392436672861466,
+      "p@10": 0.40399999999999997,
+      "recall@10": 0.16668068313722714
+    }
+  }
+}

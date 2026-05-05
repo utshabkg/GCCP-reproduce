@@ -87,7 +87,13 @@ already clean; (c) the contrastive-anchor mechanism transfers to a
 reaching PAGC NDCG@10 $=0.7465$ on DL19, exceeding both our
 reproduced Flan-UL2 ($0.7095$) and the paper's reported Flan-UL2
 (both the 2-component RG-YN+GCCP variant at $0.7206$ and the
-3-component PAGC-QSG variant at $0.7200$).
+3-component PAGC-QSG variant at $0.7200$); a compute-capped
+50-query check on BEIR-SciFact reproduces the strict
+PAGC$>$GCCP$>$RG-YN ordering under this 72B backbone, and on
+BEIR-DBPedia-Entity it \emph{reproduces our negative
+PAGC$<$GCCP-alone finding} -- showing the negative DBPedia
+result is not a Flan-T5 quirk but survives a complete change
+of backbone family, scale, and precision.
 \end{abstract}
 
 \maketitle
@@ -772,6 +778,29 @@ paper's reported Flan-UL2 (20B):
           $0.003$. \emph{An open-weight 72B model loaded in 4-bit
           AWQ on a single 48~GB GPU is competitive with the paper's
           best dense-FP16 result on DL20 and exceeds it on DL19.}
+    \item \textbf{Cross-architecture transfer onto BEIR.} To
+          test whether the 72B-AWQ result transfers beyond TREC-DL,
+          we ran Qwen-2.5-72B-AWQ with E5 retrieval on the first
+          50 queries of BEIR-SciFact and BEIR-DBPedia-Entity
+          (compute-capped: $\sim$4~min/query at 72B).
+          On SciFact (50q): $\text{E5}{=}0.7993 < \text{RG-YN}{=}0.8074
+          < \text{GCCP}{=}0.8586 < \text{PAGC}{=}\textbf{0.8734}$ --
+          the strict ordering PAGC $>$ GCCP $>$ RG-YN $>$ E5
+          baseline reproduces under the 72B AWQ backbone.
+          \textbf{On DBPedia-Entity (50q), the negative finding from
+          Section~\ref{sec:beir-e5} reproduces}:
+          $\text{RG-YN}{=}0.3667 < \text{PAGC}{=}0.4139 <
+          \text{E5}{=}0.4168 < \text{GCCP}{=}\textbf{0.4380}$ --
+          PAGC is again \emph{below} GCCP-alone and even below the
+          E5 first-stage. The ``aggregating with RG-YN under E5
+          can hurt'' phenomenon is therefore not a Flan-T5-XL
+          quirk; it survives a complete change of backbone family
+          (encoder-decoder $\to$ decoder-only), parameter count
+          ($3$B $\to$ $72$B), and quantization regime
+          (FP16 $\to$ 4-bit AWQ). The 50-query cap is a compute
+          decision, not a methodological one; we report it
+          explicitly because $n_q{=}50$ is lower-power than the
+          full BEIR-DBPedia $n_q{=}400$ result it cross-checks.
     \item \textbf{Qwen-2.5-7B-Instruct is the strongest open
           7B GCCP backbone we tested.} On DL19 PAGC, Qwen reaches
           $0.7212$ vs Flan-T5-XL $0.6939$ (re-run with score saving).
@@ -1106,8 +1135,9 @@ DBPedia); Random wins 3/8 (TREC-COVID, TREC-News, Touch\'e-2020).}
 \end{table*}
 
 \paragraph{Finding.} On TREC-DL we replicated the paper's reported
-exception (GCCP+Top slightly beats GCCP+Spectral); we now find
-that on \emph{every single one of the 8 BEIR sets we ran},
+exception (GCCP+Top slightly beats GCCP+Spectral); within the
+paper's 4-anchor comparison (Random / Top-1 / Top-3 / Spectral)
+\emph{on every single one of the 8 BEIR sets we ran},
 Spectral MDS loses to at least one simpler anchor, and
 \emph{finishes last on 3/8 sets} (TREC-COVID, Touch\'e-2020, and
 Robust04 -- where the cheapest possible anchor, Random, beats it).
@@ -1116,27 +1146,89 @@ ordering on our 8 sets (Top-3 $>$ Top-1 $>$ Spectral $>$ Random)
 is the \emph{opposite} of the paper's reported aggregate (Spectral
 $>$ Top $>$ Random).
 
-\paragraph{Reconciliation.} On a per-anchor basis, our reproduction
-matches the paper closely on Spectral (ours $0.4446$ vs paper
-$0.4471$, gap $+0.0025$) but diverges on Top ($0.4512$ vs $0.4346$,
-gap $+0.017$) and Random ($0.4423$ vs $0.4253$, gap $+0.017$). The
-fact that the gap is on the simpler anchors but not on Spectral
-suggests the paper's ``Top'' and ``Random'' use a different
-operationalization than ours (perhaps title-only, or aggressive
-truncation, or averaging over multiple random samples). We have not
-been able to identify the exact difference from the released code.
-We have sent an email to the corresponding author at NUDT with
-this specific question; if a response arrives before camera-ready
-we will fold it in. The email itself is included in the supplementary
-material.
+\paragraph{Reconciliation: title-only Top closes the gap.}
+On a per-anchor basis, our reproduction matches the paper closely
+on Spectral (ours $0.4446$ vs paper $0.4471$, gap $+0.0025$) but
+diverged on Top ($0.4512$ vs $0.4346$, $+0.017$) and Random
+($0.4423$ vs $0.4253$, $+0.017$) in our initial 4-anchor sweep.
+We tested four plausible operationalizations of ``Top'' and
+``Random'' to identify which matches the paper's numbers
+(Table~\ref{tab:beir-anchor-variants}):
+\begin{itemize}[leftmargin=1.5em,nosep]
+    \item \textbf{Random-5 averaging} ($\{0,42,929,12345,2023\}$,
+          per-query NDCG@10 averaged across seeds) gives
+          $0.4364$ -- closes $\sim 30\%$ of the Random gap
+          ($0.4423 \to 0.4364$ vs paper $0.4253$); per-seed std
+          is small ($\leq 0.009$ on every set), so Random-5 alone
+          is not the explanation.
+    \item \textbf{Top-5 composite} (sentence-interleaved over
+          top-5 docs vs top-3) gives $0.4547$ -- moves Top
+          \emph{further} from the paper, ruling out ``the paper
+          used more docs''.
+    \item \textbf{Top-1 with 64-char truncation} drops to
+          $0.4157$ -- below the paper's $0.4346$, ruling out
+          ``the paper truncates harder''.
+    \item \textbf{Top-1 title-only}: take only the document
+          title (the leading clause before the first ``. ''
+          when BEIR concatenates ``Title. body...''). This gives
+          \textbf{$0.4313$, within $0.003$ of the paper's
+          $0.4346$ -- essentially matching}. The asymmetric
+          $+0.017$ Top gap is therefore explained by the paper's
+          ``Top'' baseline being the title of the top-1 BM25
+          document, not the full document.
+\end{itemize}
+The Random gap is partially explained by 5-sample averaging but
+$\sim 0.011$ of it remains; this likely reflects the paper using a
+different random-document operationalization (e.g.\ random
+sentence rather than random document) that we have not yet
+pinned down. We have also sent an email to the corresponding
+author at NUDT with this specific question; the supplementary
+includes the email.
 
-\paragraph{Honest claim from the data.} ``In our reproduction, the
-engineering cost of spectral MDS is not justified relative to a
-top-3 sentence-interleaved composite anchor on either TREC-DL or any
-of the 8 BEIR datasets with Flan-T5-Large; whether this conclusion
-holds against a more conservative reproduction of the paper's `Top'
-and `Random' baselines is open and is the most actionable open
-question for future work on PAGC's anchor design.''
+\paragraph{Implication for the spectral MDS conclusion.} Adding
+title-only Top, Top-5, Random-5, and 64-char-truncated Top-1 to
+the comparison \emph{strengthens} our negative finding on Spectral:
+across the 9 anchor variants we tested per dataset, \textbf{Spectral
+never finishes first on any of 8 BEIR sets}. Title-only Top-1
+($0.4313$) is below Spectral ($0.4446$) on aggregate, so Spectral
+beats the paper's likely ``Top'' baseline on average -- consistent
+with the paper -- but is still beaten by Top-3 composite
+($0.4581$) and Top-1 BM25 full-document ($0.4512$) per cell. The
+engineering cost of spectral MDS is therefore not justified
+relative to a top-3 sentence-interleaved composite, even after we
+match the paper's likely ``Top'' operationalization.
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr|l}
+\toprule
+\textbf{Variant} & \textbf{Avg.} & SciFact & DBPedia & Touch\'e & Signal1M
+& \textbf{vs paper Table~5} \\
+\midrule
+Random-1 (our default)        & 0.4423 & 0.5781 & 0.4075 & 0.2954 & 0.2894 & paper Random $0.4253$, $\Delta{+}0.017$ \\
+Random-5 averaging            & 0.4364 & 0.5673 & 0.4115 & 0.2805 & 0.2825 & $\Delta{+}0.011$ (closes $\sim 30\%$) \\
+\midrule
+Top-1 BM25 (full doc, default) & 0.4512 & 0.6659 & 0.4255 & 0.2894 & 0.2734 & paper Top $0.4346$, $\Delta{+}0.017$ \\
+Top-3 sentence composite      & \textbf{0.4581} & 0.6692 & 0.4268 & 0.2869 & 0.3020 & not in paper \\
+Top-5 sentence composite      & 0.4547 & 0.6476 & 0.4259 & 0.2888 & 0.3029 & not in paper \\
+Top-1 64-char truncation      & 0.4157 & 0.5798 & 0.3815 & 0.2653 & 0.2671 & undershoots by $\Delta{-}0.019$ \\
+\textbf{Top-1 title-only}     & \textbf{0.4313} & 0.6499 & 0.3776 & 0.2728 & 0.2750 & \textbf{$\Delta{-}0.003$ (matches)} \\
+\midrule
+Spectral MDS (paper builder)  & 0.4446 & 0.6195 & 0.4186 & 0.2694 & 0.2990 & paper $0.4471$, $\Delta{-}0.003$ \\
+\bottomrule
+\end{tabular}
+\caption{Anchor-operationalization sweep on all 8 BEIR sets,
+Flan-T5-Large/BM25 (4 representative datasets shown for the
+per-cell columns; full 8-cell results in the released artifact).
+\textbf{Top-1 title-only matches the paper's reported ``Top''
+average ($0.4313$ vs $0.4346$, $\Delta{-}0.003$)}, identifying the
+likely operationalization the paper uses. Random-5 averaging
+partially explains the Random gap. Spectral matches the paper
+within $0.003$ regardless of the other variants tested.}
+\label{tab:beir-anchor-variants}
+\end{table*}
 
 \paragraph{Hyperparameter sweep ($m, z, \theta$).} We additionally
 sweep $m \in \{5, 10, 15, 20\}$, $z \in \{5, 10, 15, 20\}$, and

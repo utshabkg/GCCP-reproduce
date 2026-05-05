@@ -19,6 +19,11 @@ QWEN72B=/media/20TB/shared/models/qwen/Qwen2.5-72B-Instruct-AWQ/models--Qwen--Qw
 START="$(date '+%Y-%m-%d %H:%M:%S')"
 echo "[$(date '+%H:%M:%S')] Qwen-2.5-72B-AWQ on BEIR via E5 / GPU $CUDA_VISIBLE_DEVICES"
 
+# 72B-AWQ at ~4 min/query is too slow for full BEIR test sets; cap to
+# 50 queries per set for a directional transfer-claim. SciFact (300q)
+# and DBPedia-Entity (400q) are sampled to first 50 queries each;
+# we report this scope explicitly in the paper.
+NUM_Q=50
 for DS in scifact dbpedia-entity; do
     OUT="results/beir/${DS}/qwen2.5-72b-awq_e5"
     if [ -s "$OUT/metrics.json" ]; then
@@ -27,10 +32,11 @@ for DS in scifact dbpedia-entity; do
     fi
     LOG="$LOG_DIR/decoder_qwen2.5-72b-awq_beir_${DS}_$(date '+%Y%m%d_%H%M%S').log"
     echo
-    echo "[$(date '+%H:%M:%S')] === 72B-AWQ / BEIR-$DS ==="
+    echo "[$(date '+%H:%M:%S')] === 72B-AWQ / BEIR-$DS (first $NUM_Q queries) ==="
     echo "Log: $LOG"
     python experiments/decoder_only_models/run_decoder_beir.py \
-        --dataset "$DS" --model "$QWEN72B" --short_name "qwen2.5-72b-awq" 2>&1 | tee "$LOG"
+        --dataset "$DS" --model "$QWEN72B" --short_name "qwen2.5-72b-awq" \
+        --num_queries "$NUM_Q" 2>&1 | tee "$LOG"
 done
 
 echo
