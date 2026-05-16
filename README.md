@@ -13,7 +13,7 @@ This project reproduces the GCCP (Global-Consistent Comparative Pointwise) metho
 - **BEIR T5-XL Average Gap:** 4.2%
 - **BEIR UL2 Average Gap:** 3.2%
 
-See `results/FINAL_SUMMARY.md` for detailed results.
+See the accompanying paper for detailed results.
 
 ## Critical Implementation Details Discovered
 
@@ -65,11 +65,8 @@ python scripts/run_beir.py --dataset all --model flan-t5-xl
 │   └── run_beir.py             # BEIR experiments
 ├── results/
 │   ├── trec-dl/                # TREC-DL results
-│   ├── beir/                   # BEIR results
-│   └── FINAL_SUMMARY.md        # Summary of all results
-├── data/                       # Queries, qrels, BM25 runs
-├── PLAN.md                     # Detailed project plan
-└── COLLABORATOR_TASKS.md       # Task distribution
+│   └── beir/                   # BEIR results
+└── data/                       # Queries, qrels, BM25 runs
 ```
 
 ## Models Tested

@@ -5,7 +5,7 @@ Forensic Study of Zero-Shot Pointwise Ranking with Post-Aggregated
 Global Context"*. Targets the standard ACL/SIGIR reproducibility
 checklist.
 
-**Repository:** https://github.com/utshabkg/GCCP-reproduce
+**Repository:** [link redacted for double-blind review]
 
 ---
 

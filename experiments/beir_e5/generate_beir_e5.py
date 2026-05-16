@@ -4,7 +4,7 @@ Generate top-100 E5 retrieval results for a BEIR dataset (test split).
 
 Run in the gccp-decoder env (sentence-transformers + faiss + ir_datasets).
 
-Output format matches Christopher's TREC-DL E5 results so the existing
+Output format matches the existing TREC-DL E5 results so the existing
 reranking flow can be reused:
     {qid: {"query": ..., "passages": [{"pid": ..., "text": ..., "score": ...}, ...]}}
 

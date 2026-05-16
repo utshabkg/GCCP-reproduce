@@ -39,4 +39,8 @@ Thumbs.db
 # Author code (reference only)
 author_code/
 
+# Paper drafts and bib (kept local for double-blind submission;
+# uploaded separately to EasyChair, not in the public repo)
+paper/
+
 *.log
