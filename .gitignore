@@ -43,4 +43,4 @@ author_code/
 # uploaded separately to EasyChair, not in the public repo)
 paper/
 
-*.log
+logs/*
