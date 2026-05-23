@@ -1,0 +1,71 @@
+{
+  "description": "BGE-base-en-v1.5 retrieval robustness check for Section 7.7. Three BEIR sets (DBPedia-Entity, Robust04, NFCorpus) reranked with Flan-T5-XL. Holm-Bonferroni correction is applied within this k=3 confirmatory family separately from the primary k=22 family of Section 6.",
+  "retriever": "BAAI/bge-base-en-v1.5",
+  "reranker": "google/flan-t5-xl",
+  "k": 3,
+  "cells": {
+    "dbpedia-entity": {
+      "n_queries": 400,
+      "PAGC vs RG-YN": {
+        "delta_mean": 0.08,
+        "p_raw": 0.0,
+        "p_holm_k3": 0.0,
+        "significance_holm_k3": "***"
+      },
+      "PAGC vs GCCP": {
+        "delta_mean": -0.019,
+        "p_raw": 0.0,
+        "p_holm_k3": 0.0,
+        "significance_holm_k3": "***"
+      },
+      "GCCP vs RG-YN": {
+        "delta_mean": 0.099,
+        "p_raw": 0.0,
+        "p_holm_k3": 0.0,
+        "significance_holm_k3": "***"
+      }
+    },
+    "nfcorpus": {
+      "n_queries": 323,
+      "PAGC vs RG-YN": {
+        "delta_mean": 0.0177,
+        "p_raw": 0.0008,
+        "p_holm_k3": 0.0008,
+        "significance_holm_k3": "***"
+      },
+      "PAGC vs GCCP": {
+        "delta_mean": 0.0055,
+        "p_raw": 0.1808,
+        "p_holm_k3": 0.3616,
+        "significance_holm_k3": "ns"
+      },
+      "GCCP vs RG-YN": {
+        "delta_mean": 0.0122,
+        "p_raw": 0.0866,
+        "p_holm_k3": 0.0866,
+        "significance_holm_k3": "ns"
+      }
+    },
+    "robust04": {
+      "n_queries": 249,
+      "PAGC vs RG-YN": {
+        "delta_mean": 0.0357,
+        "p_raw": 0.0,
+        "p_holm_k3": 0.0,
+        "significance_holm_k3": "***"
+      },
+      "PAGC vs GCCP": {
+        "delta_mean": 0.0014,
+        "p_raw": 0.8404,
+        "p_holm_k3": 0.8404,
+        "significance_holm_k3": "ns"
+      },
+      "GCCP vs RG-YN": {
+        "delta_mean": 0.0343,
+        "p_raw": 0.0002,
+        "p_holm_k3": 0.0004,
+        "significance_holm_k3": "***"
+      }
+    }
+  }
+}

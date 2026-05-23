@@ -1,0 +1,171 @@
+{
+  "description": "Per-cell mean Kendall tau between RG-YN and GCCP per-query rankings, averaged across queries. Tests Discussion \u00a79 hypothesis: under E5, RG-YN and GCCP agree more often than under BM25, so the linear-aggregation step has less residual disagreement to read out.",
+  "per_cell": [
+    {
+      "family": "DL19",
+      "cell": "Flan-T5-Large/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.4583,
+      "n_q": 43
+    },
+    {
+      "family": "DL19",
+      "cell": "Flan-T5-XL/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.5296,
+      "n_q": 43
+    },
+    {
+      "family": "DL19",
+      "cell": "Flan-T5-XL/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.477,
+      "n_q": 43
+    },
+    {
+      "family": "DL19",
+      "cell": "LLaMA-3.1-8B/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.3436,
+      "n_q": 43
+    },
+    {
+      "family": "DL19",
+      "cell": "Mistral-7B/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.3197,
+      "n_q": 43
+    },
+    {
+      "family": "DL19",
+      "cell": "Qwen-7B/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.415,
+      "n_q": 43
+    },
+    {
+      "family": "DL19",
+      "cell": "Qwen-72B-AWQ/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.5146,
+      "n_q": 43
+    },
+    {
+      "family": "DL20",
+      "cell": "Flan-T5-Large/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.434,
+      "n_q": 54
+    },
+    {
+      "family": "DL20",
+      "cell": "Flan-T5-XL/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.5464,
+      "n_q": 54
+    },
+    {
+      "family": "DL20",
+      "cell": "Flan-T5-XL/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.5016,
+      "n_q": 54
+    },
+    {
+      "family": "DL20",
+      "cell": "LLaMA-3.1-8B/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.3421,
+      "n_q": 54
+    },
+    {
+      "family": "DL20",
+      "cell": "Mistral-7B/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.3008,
+      "n_q": 54
+    },
+    {
+      "family": "DL20",
+      "cell": "Qwen-7B/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.4455,
+      "n_q": 54
+    },
+    {
+      "family": "DL20",
+      "cell": "Qwen-72B-AWQ/BM25",
+      "retriever": "BM25",
+      "mean_kendall_tau": 0.5286,
+      "n_q": 54
+    },
+    {
+      "family": "BEIR",
+      "cell": "SciFact/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.3576,
+      "n_q": 300
+    },
+    {
+      "family": "BEIR",
+      "cell": "NFCorpus/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.4407,
+      "n_q": 323
+    },
+    {
+      "family": "BEIR",
+      "cell": "TREC-COVID/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.5287,
+      "n_q": 50
+    },
+    {
+      "family": "BEIR",
+      "cell": "Touche-2020/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.4519,
+      "n_q": 49
+    },
+    {
+      "family": "BEIR",
+      "cell": "DBPedia-Entity/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.4775,
+      "n_q": 400
+    },
+    {
+      "family": "BEIR",
+      "cell": "TREC-News/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.4854,
+      "n_q": 57
+    },
+    {
+      "family": "BEIR",
+      "cell": "Robust04/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.531,
+      "n_q": 249
+    },
+    {
+      "family": "BEIR",
+      "cell": "Signal-1M/E5",
+      "retriever": "E5",
+      "mean_kendall_tau": 0.4567,
+      "n_q": 97
+    }
+  ],
+  "aggregate": {
+    "bm25_cells": {
+      "n": 12,
+      "mean_tau": 0.4315
+    },
+    "e5_cells": {
+      "n": 10,
+      "mean_tau": 0.4708
+    },
+    "delta_e5_minus_bm25": 0.0393
+  },
+  "interpretation": "Hypothesis predicts E5 > BM25. Observed \u0394=+0.04 \u2014 in predicted direction but modest. DBPedia-Entity (\u03c4=0.48) is mid-pack among E5 cells, so the aggregate mechanism does not single out DBPedia specifically."
+}

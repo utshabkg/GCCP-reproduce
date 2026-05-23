@@ -187,6 +187,15 @@ def main() -> None:
             return False
         if "authorMDS" in label:
             return False
+        # 50-query Qwen-72B-AWQ BEIR runs are confirmatory cross-architecture
+        # checks (Section 7.2), not primary cells.
+        if "qwen2.5-72b-awq_e5" in label and label.startswith("beir/"):
+            return False
+        # BGE-retrieval BEIR cells (Section 7.7 robustness check) are a
+        # separate confirmatory family with k=3 Holm, reported alongside
+        # but not pooled into the primary k=22.
+        if label.endswith("_bge"):
+            return False
         return True
 
     families = {"PAGC vs RG-YN", "PAGC vs GCCP", "GCCP vs RG-YN"}

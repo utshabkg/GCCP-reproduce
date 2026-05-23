@@ -1,4 +1,45 @@
 {
+  "beir/dbpedia-entity/flan-t5-xl_bge": {
+    "n_queries": 400,
+    "comparisons": {
+      "PAGC vs RG-YN": {
+        "baseline_mean": 0.37001324754073905,
+        "system_mean": 0.4499764229236017,
+        "delta_mean": 0.07996317538286264,
+        "p_value": 0.0,
+        "ci_95_lo": 0.06623519191756248,
+        "ci_95_hi": 0.09438750070379227,
+        "n_better": 236,
+        "n_worse": 66,
+        "n_tied": 98,
+        "significance": "***"
+      },
+      "PAGC vs GCCP": {
+        "baseline_mean": 0.46899526945645925,
+        "system_mean": 0.4499764229236017,
+        "delta_mean": -0.0190188465328575,
+        "p_value": 0.0,
+        "ci_95_lo": -0.028360171224897313,
+        "ci_95_hi": -0.00986220185540128,
+        "n_better": 102,
+        "n_worse": 196,
+        "n_tied": 102,
+        "significance": "***"
+      },
+      "GCCP vs RG-YN": {
+        "baseline_mean": 0.37001324754073905,
+        "system_mean": 0.46899526945645925,
+        "delta_mean": 0.09898202191572014,
+        "p_value": 0.0,
+        "ci_95_lo": 0.08121526073657334,
+        "ci_95_hi": 0.11690084283173247,
+        "n_better": 252,
+        "n_worse": 90,
+        "n_tied": 58,
+        "significance": "***"
+      }
+    }
+  },
   "beir/dbpedia-entity/flan-t5-xl_e5": {
     "n_queries": 400,
     "comparisons": {
@@ -49,6 +90,88 @@
       }
     }
   },
+  "beir/dbpedia-entity/qwen2.5-72b-awq_e5": {
+    "n_queries": 50,
+    "comparisons": {
+      "PAGC vs RG-YN": {
+        "baseline_mean": 0.36665359311054435,
+        "system_mean": 0.4139243667286147,
+        "delta_mean": 0.04727077361807026,
+        "p_value": 0.0134,
+        "ci_95_lo": 0.009897709975442395,
+        "ci_95_hi": 0.08821333403448817,
+        "n_better": 27,
+        "n_worse": 12,
+        "n_tied": 11,
+        "significance": "*"
+      },
+      "PAGC vs GCCP": {
+        "baseline_mean": 0.43800652692016667,
+        "system_mean": 0.4139243667286147,
+        "delta_mean": -0.024082160191552054,
+        "p_value": 0.0432,
+        "ci_95_lo": -0.050265873910810444,
+        "ci_95_hi": -0.0008664182605219258,
+        "n_better": 8,
+        "n_worse": 10,
+        "n_tied": 32,
+        "significance": "*"
+      },
+      "GCCP vs RG-YN": {
+        "baseline_mean": 0.36665359311054435,
+        "system_mean": 0.43800652692016667,
+        "delta_mean": 0.07135293380962232,
+        "p_value": 0.0012,
+        "ci_95_lo": 0.023303878965127055,
+        "ci_95_hi": 0.12340127199929252,
+        "n_better": 26,
+        "n_worse": 18,
+        "n_tied": 6,
+        "significance": "**"
+      }
+    }
+  },
+  "beir/nfcorpus/flan-t5-xl_bge": {
+    "n_queries": 323,
+    "comparisons": {
+      "PAGC vs RG-YN": {
+        "baseline_mean": 0.37160730439064105,
+        "system_mean": 0.38928578355519156,
+        "delta_mean": 0.017678479164550447,
+        "p_value": 0.0008,
+        "ci_95_lo": 0.007364755271167351,
+        "ci_95_hi": 0.02833339175140804,
+        "n_better": 116,
+        "n_worse": 64,
+        "n_tied": 143,
+        "significance": "***"
+      },
+      "PAGC vs GCCP": {
+        "baseline_mean": 0.3838274989653326,
+        "system_mean": 0.38928578355519156,
+        "delta_mean": 0.005458284589858959,
+        "p_value": 0.1808,
+        "ci_95_lo": -0.0025734218778533805,
+        "ci_95_hi": 0.013728752484611957,
+        "n_better": 88,
+        "n_worse": 82,
+        "n_tied": 153,
+        "significance": "ns"
+      },
+      "GCCP vs RG-YN": {
+        "baseline_mean": 0.37160730439064105,
+        "system_mean": 0.3838274989653326,
+        "delta_mean": 0.012220194574691487,
+        "p_value": 0.0866,
+        "ci_95_lo": -0.0017090993560051032,
+        "ci_95_hi": 0.026452744203258056,
+        "n_better": 124,
+        "n_worse": 88,
+        "n_tied": 111,
+        "significance": "ns"
+      }
+    }
+  },
   "beir/nfcorpus/flan-t5-xl_e5": {
     "n_queries": 323,
     "comparisons": {
@@ -96,6 +219,47 @@
         "p_value_holm": 0.5796,
         "significance_holm": "ns",
         "reject_at_0.05_holm": false
+      }
+    }
+  },
+  "beir/robust04/flan-t5-xl_bge": {
+    "n_queries": 249,
+    "comparisons": {
+      "PAGC vs RG-YN": {
+        "baseline_mean": 0.5095741244505628,
+        "system_mean": 0.5452295514522302,
+        "delta_mean": 0.03565542700166734,
+        "p_value": 0.0,
+        "ci_95_lo": 0.02493548690315287,
+        "ci_95_hi": 0.04659626713557136,
+        "n_better": 130,
+        "n_worse": 68,
+        "n_tied": 51,
+        "significance": "***"
+      },
+      "PAGC vs GCCP": {
+        "baseline_mean": 0.5438462430271258,
+        "system_mean": 0.5452295514522302,
+        "delta_mean": 0.0013833084251041968,
+        "p_value": 0.8404,
+        "ci_95_lo": -0.011440143614212337,
+        "ci_95_hi": 0.013871699514966288,
+        "n_better": 107,
+        "n_worse": 104,
+        "n_tied": 38,
+        "significance": "ns"
+      },
+      "GCCP vs RG-YN": {
+        "baseline_mean": 0.5095741244505628,
+        "system_mean": 0.5438462430271258,
+        "delta_mean": 0.03427211857656314,
+        "p_value": 0.0002,
+        "ci_95_lo": 0.01497801577746439,
+        "ci_95_hi": 0.05329652955467345,
+        "n_better": 133,
+        "n_worse": 93,
+        "n_tied": 23,
+        "significance": "***"
       }
     }
   },
@@ -196,6 +360,47 @@
         "p_value_holm": 0.144,
         "significance_holm": "ns",
         "reject_at_0.05_holm": false
+      }
+    }
+  },
+  "beir/scifact/qwen2.5-72b-awq_e5": {
+    "n_queries": 50,
+    "comparisons": {
+      "PAGC vs RG-YN": {
+        "baseline_mean": 0.8074345831688825,
+        "system_mean": 0.8734920136778649,
+        "delta_mean": 0.06605743050898238,
+        "p_value": 0.0004,
+        "ci_95_lo": 0.029374561612316868,
+        "ci_95_hi": 0.1060604385507528,
+        "n_better": 11,
+        "n_worse": 2,
+        "n_tied": 37,
+        "significance": "***"
+      },
+      "PAGC vs GCCP": {
+        "baseline_mean": 0.8586317780328941,
+        "system_mean": 0.8734920136778649,
+        "delta_mean": 0.014860235644970667,
+        "p_value": 0.3372,
+        "ci_95_lo": -0.015835075155317593,
+        "ci_95_hi": 0.04617412076538893,
+        "n_better": 7,
+        "n_worse": 2,
+        "n_tied": 41,
+        "significance": "ns"
+      },
+      "GCCP vs RG-YN": {
+        "baseline_mean": 0.8074345831688825,
+        "system_mean": 0.8586317780328941,
+        "delta_mean": 0.05119719486401172,
+        "p_value": 0.0676,
+        "ci_95_lo": -0.003284715767245076,
+        "ci_95_hi": 0.11010254137255757,
+        "n_better": 10,
+        "n_worse": 8,
+        "n_tied": 32,
+        "significance": "ns"
       }
     }
   },
